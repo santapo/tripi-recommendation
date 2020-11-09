@@ -1,4 +1,4 @@
-package recommender.engine.ServingLayer
+package recommender.engine.restserving
 
 import java.util.Calendar
 
@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import recommender.engine.DataProcessing.dataReader
+import recommender.engine.core.dataReader
 import scala.io.StdIn
 import scala.concurrent.Future
 

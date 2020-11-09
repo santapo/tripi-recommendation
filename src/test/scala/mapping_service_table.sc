@@ -1,5 +1,5 @@
 import org.apache.spark.sql.functions.{collect_list, first, levenshtein, min, udf}
-import recommender.engine.DataProcessing.Udf.{mapProviderUdf, normHotelNameUdf, sigmoidPriceUdf}
+import recommender.engine.core.Udf.{mapProviderUdf, normHotelNameUdf, sigmoidPriceUdf}
 
 val spark = org.apache.spark.sql.SparkSession
   .builder()

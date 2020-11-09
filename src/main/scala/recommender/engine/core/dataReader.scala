@@ -1,4 +1,4 @@
-package recommender.engine.DataProcessing
+package recommender.engine.core
 
 import org.apache.spark.sql.{Dataset, Encoders, Row}
 import org.apache.spark.sql.functions.{asc, col, desc}

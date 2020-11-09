@@ -1,4 +1,4 @@
-package recommender.engine.DataProcessing
+package recommender.engine.core
 
 import org.apache.commons.lang3.StringUtils.stripAccents
 import org.apache.spark.sql.functions.udf

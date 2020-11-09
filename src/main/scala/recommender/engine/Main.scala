@@ -1,9 +1,9 @@
 package recommender.engine
 
 
-import recommender.engine.ServingLayer.AkkaServer
+import recommender.engine.restserving.AkkaServer
 import akka.actor.{ActorSystem, Props}
-import recommender.engine.DataProcessing.DataPreprocessing
+import recommender.engine.core.DataPreprocessing
 
 import scala.concurrent.duration.DurationInt
 

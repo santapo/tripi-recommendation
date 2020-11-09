@@ -1,10 +1,10 @@
-package recommender.engine.DataProcessing
+package recommender.engine.core
 
 import java.util.Calendar
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.sql.functions._
-import recommender.engine.DataProcessing.Udf._
+import recommender.engine.core.Udf._
 
 class DataProcessing {
 
