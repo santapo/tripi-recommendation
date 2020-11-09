@@ -1,15 +1,19 @@
 package recommender.engine.ServingLayer
 
+import java.util.Calendar
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
+import recommender.engine.DataProcessing.dataReader
 import scala.io.StdIn
 import scala.concurrent.Future
 
 
-object AkkaServer {
+class AkkaServer {
+  val readData = dataReader
 
   // To run the route
   implicit val system = ActorSystem()
@@ -22,7 +26,12 @@ object AkkaServer {
     val route: Route = concat(
       get {
         path("search_query") {
-          complete {
+          parameters('page.as[Int],'key.as[String]) { (page, key) =>
+            complete {
+              val hotel_table = readData.readData()
+              val getprice = hotel_table.search(page, key).load()
+              getprice
+            }
           }
         }
       }
@@ -30,7 +39,11 @@ object AkkaServer {
 
     // Binding to the host and port
     val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+    println(Calendar.getInstance().getTime + s": Server online at http://localhost:8080/\nPress Enter to stop...\n")
+    StdIn.readLine() // let the server run until user presses Enter
+
+    bindingFuture
+      .flatMap(_.unbind()) // trigger unbinding from the port
+      .onComplete(_ ⇒ system.terminate()) // and shutdown when done
   }
-
-
 }
