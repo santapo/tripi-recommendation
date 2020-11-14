@@ -8,7 +8,7 @@ import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.sql.functions._
 import com.datastax.spark.connector._
 
-class DataPreprocessing {
+class DataPreprocessingNew {
   val spark = org.apache.spark.sql.SparkSession
     .builder()
     .config("spark.debug.maxToStringFields", 100)
@@ -26,14 +26,14 @@ class DataPreprocessing {
   val connector = CassandraConnector(sparkContext.getConf)
   connector.withSessionDo(session => {
     session.execute("DROP KEYSPACE IF EXISTS testkeyspace")
-    session.execute("CREATE KEYSPACE testkeyspace WITH replication = {'class':'SimpleStrategy','replication_factor':1}")
+    session.execute("CREATE KEYSPACE testkeyspace WITH replication = {'class':'SimpleStrategy', 'replication_factor':1}")
     session.execute("USE testkeyspace")
   }
   )
 
   val dataMap = new DataProcessing
 
-  def dataFiltering(): Unit = {
+  def dataToCassandra(): Unit = {
 
     /**
      * Read data from Clickhouse Database then save in Cassandra
@@ -145,16 +145,17 @@ class DataPreprocessing {
     // Preprocess then save in Cassandra
     //
 
-    // Create hotel_mapping table with province_id and price_daily
-    val province_clean = province.select(
-      col("id").cast("Int").as("province_id"),
-      col("name_no_accent").cast("String").as("province")
-    )
-
+    // Create hotel_mapping table with max min avg price
     val hotel_price_daily_clean = hotel_price_daily.select(
       col("domain_id").cast("Int"),
       col("domain_hotel_id").cast("BigInt"),
       col("final_amount_min").cast("Float"))
+
+    val price_min_max = hotel_price_daily_clean
+      .groupBy("domain_id","domain_hotel_id")
+      .agg(max("final_amount_min").as("max_price"),
+        min("final_amount_min").as("min_price"),
+        avg("final_amount_min").as("avg_price"))
 
     val hotel_mapping_clean = hotel_mapping.select(
       col("id").cast("String"),
@@ -173,57 +174,29 @@ class DataPreprocessing {
       .filter(col("address") isNotNull)
       .dropDuplicates("domain_id", "domain_hotel_id")
 
-    val hotel_mapping_with_province_1st = hotel_mapping_clean.select(
-      col("id").cast("String"),
-      col("domain_id").cast("Int"),
-      col("domain_hotel_id").cast("BigInt"),
-      col("name").cast("String"),
-      col("url").cast("String"),
-      col("longitude").cast("Float"),
-      col("latitude").cast("Float"),
-      col("star_number").cast("Int"),
-      col("overall_score").cast("Float"),
-      col("checkin_time").cast("String"),
-      col("checkout_time").cast("String"),
-      getProvinceFirstOrderUdf(col("address")).cast("String").as("province")
-    )
-    val hotel_mapping_with_province_2nd = hotel_mapping_with_province_1st.select(
+    val hotel_mapping_with_price = hotel_mapping_clean
+      .join(price_min_max,Seq("domain_id","domain_hotel_id"),"inner")
+
+    val hotel_mapping_with_price_clean = hotel_mapping_with_price.select(
       col("id").cast("String").as("hotel_id"),
       col("domain_id").cast("Int"),
       col("domain_hotel_id").cast("BigInt"),
-      col("name").cast("String"),
+      col("name").cast("String").as("name_mapping"),
+      col("address").cast("String").as("address_mapping"),
       col("url").cast("String"),
-      col("longitude").cast("Float"),
-      col("latitude").cast("Float"),
-      col("star_number").cast("Int"),
-      col("overall_score").cast("Float"),
-      col("checkin_time").cast("String"),
-      col("checkout_time").cast("String"),
-      getProvinceSecondOrderUdf(col("province")).cast("String").as("province")
+      col("longitude").cast("Float").as("long_mapping"),
+      col("latitude").cast("Float").as("lat_mapping"),
+      col("star_number").cast("Int").as("star_mapping"),
+      col("overall_score").cast("Float").as("overall_mapping"),
+      col("checkin_time").cast("String").as("checkin_mapping"),
+      col("checkout_time").cast("String").as("checkout_mapping"),
+      col("max_price").cast("Float"),
+      col("min_price").cast("Float"),
+      col("avg_price").cast("Float")
     )
 
-    val hotel_mapping_with_province_id = hotel_mapping_with_province_2nd
-      .join(province_clean, Seq("province"), "inner")
-      .filter(col("province") isNotNull)
-
-    val hotel_mapping_with_province_id_clean = hotel_mapping_with_province_id.select(
-      col("hotel_id").cast("String"),
-      col("domain_id").cast("Int"),
-      col("domain_hotel_id").cast("BigInt"),
-      col("name").cast("String"),
-      col("url").cast("String"),
-      col("longitude").cast("Float"),
-      col("latitude").cast("Float"),
-      col("star_number").cast("Int"),
-      col("overall_score").cast("Float"),
-      col("checkin_time").cast("String"),
-      col("checkout_time").cast("String"),
-      col("province").cast("String"),
-      col("province_id").cast("Int")
-    )
-
-    hotel_mapping_with_province_id_clean.createCassandraTable("testkeyspace", "hotel_mapping")
-    hotel_mapping_with_province_id_clean
+    hotel_mapping_with_price_clean.createCassandraTable("testkeyspace", "hotel_mapping")
+    hotel_mapping_with_price_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
@@ -278,17 +251,8 @@ class DataPreprocessing {
       .join(hotel_service_clean, Seq("hotel_id"), "inner")
       .dropDuplicates()
 
-    val hotel_service_table_with_score = hotel_service_table
-      .withColumn("service_score",
-        sigmoidServiceUdf(col("relax_spa"),
-          col("relax_massage"),
-          col("relax_outdoor_pool"),
-          col("relax_sauna"),
-          col("cleanliness_score"),
-          col("meal_score")).cast("Float"))
-
-    hotel_service_table_with_score.createCassandraTable("testkeyspace", "hotel_service")
-    hotel_service_table_with_score
+    hotel_service_table.createCassandraTable("testkeyspace", "hotel_service")
+    hotel_service_table
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
@@ -320,13 +284,12 @@ class DataPreprocessing {
     Thread.sleep(200000)
 
     // Cleaning and Filtering cosine_hotel table
-    val cosine_hotel_top = cosine_hotel.filter(col("cosine_name") > 0.87
-      && col("distance") < 0.045 && col("similar_point") > 0.86
+    val cosine_hotel_top = cosine_hotel.filter(col("similar_point") > 0.85
       && col("rank_point") === 1)
 
     val cosine_hotel_top_clean = cosine_hotel_top.select(
-      col("id").cast("String"),
-      col("hotel_id").cast("Int"),
+      col("id").cast("String").as("table_id"),
+      col("hotel_id").cast("Int").as("id"),
       col("domain_id").cast("Int"),
       col("domain_hotel_id").cast("BigInt"),
       col("cosine_name").cast("Double"),
@@ -344,22 +307,63 @@ class DataPreprocessing {
       .options(Map("table" -> "cosine_similar", "keyspace" -> "testkeyspace"))
       .save()
 
-    println(Calendar.getInstance().getTime + ": Data Preprocessing is Success\n")
+    println(Calendar.getInstance().getTime + ": Data is Saved\n")
 
-    dataMap.mapping()
+    dataMapping()
+  }
 
+  def dataMapping(): Unit = {
+    println(Calendar.getInstance().getTime + ": Start data mapping...\n")
+
+    val hotel_mapping = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "hotel_mapping", "keyspace" -> "testkeyspace"))
+      .load()
+
+    val cosine_similar = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "cosine_similar", "keyspace" -> "testkeyspace"))
+      .load()
+
+    val root_hotel = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
+      .load()
+
+    hotel_mapping.printSchema()
+    hotel_mapping.groupBy().count().show()
+
+    cosine_similar.printSchema()
+    cosine_similar.groupBy().count().show()
+
+    root_hotel.printSchema()
+    root_hotel.groupBy().count().show()
+
+    val mapping_root = cosine_similar
+      .join(hotel_mapping,Seq("domain_id","domain_hotel_id"),"inner")
+      .join(root_hotel,Seq("id"),"inner")
+
+    mapping_root.createCassandraTable("testkeyspace", "mapping_root")
+    mapping_root
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace"))
+      .save()
   }
 }
 
-case object dataFiltering
 
-class dataPreprocessingActor(DataPreprocessing: DataPreprocessing) extends Actor{
+
+case object dataToCassandra
+
+class dataPreprocessingNewActor(DataPreprocessingNew: DataPreprocessingNew) extends Actor{
 
   // Implement receive mehtod
   def  receive = {
     case dataFiltering => {
-      println(Calendar.getInstance().getTime + ": Start Data Preprocessing... \n")
-      DataPreprocessing.dataFiltering()
+      println(Calendar.getInstance().getTime + ": Data is Saving to Cassandra... \n")
+      DataPreprocessingNew.dataToCassandra()
     }
   }
 }

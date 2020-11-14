@@ -3,8 +3,9 @@ package recommender.engine.core
 import java.util.Calendar
 
 import com.datastax.spark.connector.cql.CassandraConnector
+import com.datastax.spark.connector._
 import org.apache.spark.sql.functions._
-import recommender.engine.core.Udf._
+import Udf._
 
 class DataProcessing {
 
@@ -25,9 +26,7 @@ class DataProcessing {
 
   val connector = CassandraConnector(sparkContext.getConf)
   connector.withSessionDo(session => {
-    session.execute("DROP KEYSPACE IF EXISTS testkeyspace")
-    session.execute("CREATE KEYSPACE testkeyspace WITH replication = {'class':'SimpleStrategy', 'replication_factor':1}")
-    session.execute("USE testkeyspace")
+        session.execute("USE testkeyspace")
   })
 
   def mapping(): Unit ={
@@ -85,7 +84,6 @@ class DataProcessing {
       val hotel_rank_region = hotel_rank.filter(col("province_id").cast("Int") === province_id)
       val root_hotel_region = root_hotel.filter(col("province_id").cast("Int") === province_id)
 
-
       val hotel_rank_region_normName = hotel_rank_region.select(
         col("hotel_id"),
         col("domain_hotel_id"),
@@ -125,22 +123,18 @@ class DataProcessing {
         min(col("final_amount_min")).as("price"),
         collect_list("suggest").as("suggest"))
 
-      // not creating groupByIdPrice table yet
+      if(province_id == 1) {
+        groupByIdPrice.createCassandraTable("testkeyspace","hotel_table")
+      }
+
       groupByIdPrice
         .write
         .format("org.apache.spark.sql.cassandra")
         .mode("Append")
-        .options(Map("table" -> "hotel_table", "keyspace" -> "trip"))
+        .options(Map("table" -> "hotel_table", "keyspace" -> "testkeyspace"))
         .save()
       print(".")
     }
-
-
-
-
+    print(Calendar.getInstance().getTime + ": Mapping process is success\n")
   }
-
-
-
-
 }

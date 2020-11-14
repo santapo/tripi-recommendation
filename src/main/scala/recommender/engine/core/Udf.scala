@@ -2,8 +2,9 @@ package recommender.engine.core
 
 import org.apache.commons.lang3.StringUtils.stripAccents
 import org.apache.spark.sql.functions.udf
-import scala.util.matching.Regex
+
 import scala.math._
+import scala.util.matching.Regex
 
 class Udf {
 

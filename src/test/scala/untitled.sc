@@ -1,5 +1,7 @@
-import org.apache.spark.sql.functions.{collect_list, collect_set, date_add, first, levenshtein, min, udf}
 import recommender.engine.core.Udf._
+import org.apache.spark.sql.functions.{collect_list, first, levenshtein, min, col}
+
+
 
 val spark = org.apache.spark.sql.SparkSession
   .builder()
@@ -16,14 +18,6 @@ import spark.implicits._
 val sparkContext = spark.sparkContext
 
 sparkContext.setLogLevel("WARN")
-
-val convertPrice = (price: Float) =>{
-  val formatter = java.text.NumberFormat.getIntegerInstance
-  val priceString = formatter.format(price).toString
-  priceString
-}
-
-val convertPriceUdf = udf(convertPrice)
 
 
 val hotel_mapping = spark.read
@@ -109,38 +103,8 @@ val groupByIdPrice = groupById.groupBy("id").agg(
   first(col("star_number")).as("star_number"),
   first(col("overall_score")).as("overall_score"),
   min(col("final_amount_min")).as("price"),
-  (collect_list("suggest")).as("suggest")
+  collect_list("suggest").as("suggest")
 )
 
-groupByName.groupBy().count().show()
 
-groupByName.show()
-
-hotel_rank_region_normName.groupBy().count().show()
-
-groupById.show()
-
-groupByIdPrice.show()
-
-groupById.printSchema()
-
-import com.datastax.spark.connector._
-
-groupByIdPrice.printSchema()
-
-groupByIdPrice.show(false)
-
-groupByIdPrice
-  .write
-  .format("org.apache.spark.sql.cassandra")
-  .mode("Append")
-  .options(Map("table" -> "hotel_table_2", "keyspace" -> "testkeyspace"))
-  .save()
-
-val data = spark.read
-  .format("org.apache.spark.sql.cassandra")
-  .options(Map("table" -> "hotel_table_2", "keyspace" -> "testkeyspace"))
-  .load()
-
-data.show()
 

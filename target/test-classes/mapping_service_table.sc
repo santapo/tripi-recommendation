@@ -1,9 +1,10 @@
-import org.apache.spark.sql.functions.{collect_list, first, levenshtein, min}
-import recommender.engine.DataProcessing.Udf.{convertPriceUdf, mapProviderUdf, normHotelNameUdf, sigmoidPriceUdf}
+import org.apache.spark.sql.functions.{collect_list, collect_set, first, levenshtein, min, udf}
+import recommender.engine.core.Udf._
 
 val spark = org.apache.spark.sql.SparkSession
   .builder()
   .config("spark.debug.maxToStringFields",100)
+  .config("spark.sql.autoBroadcastJoinThreshold","-1")
   .config("spark.cassandra.connection.host", "localhost")
   .master("local[*]")
   .appName("phoenix-tripi-dataprocessing")
@@ -15,6 +16,15 @@ import spark.implicits._
 val sparkContext = spark.sparkContext
 
 sparkContext.setLogLevel("WARN")
+
+val convertPrice = (price: Float) =>{
+  val formatter = java.text.NumberFormat.getIntegerInstance
+  val priceString = formatter.format(price).toString
+  priceString
+}
+
+val convertPriceUdf = udf(convertPrice)
+
 
 val hotel_mapping = spark.read
   .format("org.apache.spark.sql.cassandra")
@@ -84,12 +94,41 @@ val root_hotel_region_normName = root_hotel_region.select(
   col("overall_score"))
   .na.fill(0)
 
-hotel_rank_region_normName.show()
+val groupByName = root_hotel_region_normName
+  .join(hotel_rank_region_normName, levenshtein(root_hotel_region_normName("name"), hotel_rank_region_normName("nameOther")) < 1)
 
+val groupById = groupByName
+  .withColumn("suggest", mapProviderUdf(col("url"), col("domain_id"), col("final_amount_min")))
 
+val groupByIdPrice = groupById.groupBy("id").agg(
+  first(col("domain_id")).as("provider"),
+  first(col("province")).as("province"),
+  first(col("name")).as("name"),
+  first(col("rank")).as("rank"),
+  first(col("address")).as("address"),
+  first(col("star_number")).as("star_number"),
+  first(col("overall_score")).as("overall_score"),
+  min(col("final_amount_min")).as("price"),
+  collect_list("suggest").as("suggest")
+)
 
+groupByName.groupBy().count().show()
 
+groupByName.show()
 
+hotel_rank_region_normName.groupBy().count().show()
+
+groupById.show()
+
+groupByIdPrice.show()
+
+groupById.printSchema()
+
+import com.datastax.spark.connector._
+
+groupByIdPrice.printSchema()
+
+groupByIdPrice.show(false)
 
 
 

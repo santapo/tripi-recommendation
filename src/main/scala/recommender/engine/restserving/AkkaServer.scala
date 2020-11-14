@@ -7,13 +7,14 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import recommender.engine.core.dataReader
+import recommender.engine.core.DataReader
+
 import scala.io.StdIn
 import scala.concurrent.Future
 
 
 class AkkaServer {
-  val readData = dataReader
+  val readData = DataReader
 
   // To run the route
   implicit val system = ActorSystem()
