@@ -79,7 +79,7 @@ class DataProcessing {
     val hotel_rank = mapping_with_service
       .withColumn("rank", col("service_score") / col("price_score"))
 
-    for(province_id <- 1 to 63) {
+    for(province_id <- 1 to 3) {
 
       val hotel_rank_region = hotel_rank.filter(col("province_id").cast("Int") === province_id)
       val root_hotel_region = root_hotel.filter(col("province_id").cast("Int") === province_id)
@@ -122,10 +122,6 @@ class DataProcessing {
         first(col("overall_score")).as("overall_score"),
         min(col("final_amount_min")).as("price"),
         collect_list("suggest").as("suggest"))
-
-      if(province_id == 1) {
-        groupByIdPrice.createCassandraTable("testkeyspace","hotel_table")
-      }
 
       groupByIdPrice
         .write

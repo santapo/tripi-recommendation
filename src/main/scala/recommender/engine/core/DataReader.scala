@@ -31,29 +31,15 @@ object DataReader {
   case class hotel(id: String,
                    provider: String,
                    name: String,
+                   province: String,
+                   rank: Double,
                    address: String,
-                   price: String,
-                   rank: Float,
-                   review: Int,
                    star_number: Int,
                    overall_score: Float,
-                   checkin_time: String,
-                   checkout_time: String,
+                   price: String,
                    suggest: Array[Map[String,String]])
 
-  def getData(x: Option[Any]) = x match {
-    case Some(s) => {
-      if (s == null){
-        "0"
-      }else {
-        s.toString
-      }
-    }
-    case None => "0"
-    case _ => "0"
-  }
-
-  class readData(val hotel_table: Dataset[Row], val suggest: Dataset[Row]){
+  class readData(val hotel_table:Dataset[Row]){
 
     def search (page:Int,key:String) : readData = {
       val patternD = new Regex("đ|ð")
@@ -64,20 +50,15 @@ object DataReader {
       val dataHotel = this.hotel_table
         .filter(col("province") === (newkey))
       val dataHotelRank = dataHotel.orderBy(desc("rank"))
-      val offset = dataHotelRank.limit(page*5)
-      val data = dataHotelRank.except(offset).limit(5).join(this.suggest,Seq("id"))
-      val readdata = new readData(data,this.suggest)
+      val data = dataHotelRank.limit(page*5)
+      val readdata = new readData(data)
 
       readdata
     }
 
     def load(): String = {
-      val schema = Encoders.product[hotel]
-      org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)
 
       val data = this.hotel_table
-        .na.drop()
-        .as[hotel](schema)
         .collectAsList
         .toList
       val jsonString = Json(DefaultFormats).write(data)
@@ -96,24 +77,7 @@ object DataReader {
       .cache()
       .filter(col("price").cast("String")=!=("0"))
 
-    val dataHotel = hotel_table.select(
-      col("id"),
-      col("provider"),
-      col("name"),
-      col("province"),
-      col("rank"),
-      col("address"),
-      col("star_number"),
-      col("overall_score"),
-      col("checkin_time"),
-      col("checkout_time"),
-      col("price")
-    )
-
-    val suggest = hotel_table.select(col("id")
-    ,col("suggest"))
-
-    val readdata = new readData(dataHotel,suggest)
+    val readdata = new readData(hotel_table)
     readdata
   }
 

@@ -139,7 +139,7 @@ groupByIdPrice
 
 val data = spark.read
   .format("org.apache.spark.sql.cassandra")
-  .options(Map("table" -> "hotel_table_2", "keyspace" -> "testkeyspace"))
+  .options(Map("table" -> "hotel_table", "keyspace" -> "testkeyspace"))
   .load()
 
 data.show()
