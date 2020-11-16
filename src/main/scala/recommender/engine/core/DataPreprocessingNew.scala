@@ -125,6 +125,16 @@ class DataPreprocessingNew {
       .option("password", "z3hE3TkjFzNyXhjb6iek")
       .load()
 
+    val hotel_logging = spark.read
+      .format("jdbc")
+      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+      .option("dbtable", "hotel_logging")
+      .option("user", "FiveF1")
+      .option("password", "z3hE3TkjFzNyXhjb6iek")
+      .load()
+
+
     val hotel_price_daily = spark.read
       .format("jdbc")
       .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
@@ -292,6 +302,38 @@ class DataPreprocessingNew {
       .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
       .save()
 
+    val hotel_review_clean = hotel_review.select(
+      col("review_id").cast("Int"),
+      col("domain_id").cast("Int"),
+      col("domain_hotel_id").cast("BigInt"),
+      col("review_datetime").cast("Date"),
+      col("score").cast("Float")
+    )
+
+    hotel_review_clean.createCassandraTable("testkeyspace","hotel_review")
+    hotel_review_clean
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "hotel_review", "keyspace" -> "testkeyspace"))
+      .save()
+
+    val hotel_logging_clean = hotel_logging.select(
+      col("id").cast("String"),
+      col("user_id").cast("BigInt"),
+      col("action_name").cast("String"),
+      col("hotel_id").cast("Int"),
+      col("room_night").cast("Int")
+    )
+
+    hotel_logging_clean.createCassandraTable("testkeyspace","hotel_logging")
+    hotel_logging_clean
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
+      .save()
+
     Thread.sleep(200000)
 
     // Cleaning and Filtering cosine_hotel table
@@ -341,18 +383,50 @@ class DataPreprocessingNew {
       .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
       .load()
 
-    hotel_mapping.printSchema()
-    hotel_mapping.groupBy().count().show()
+    val hotel_service = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "hotel_service", "keyspace" -> "testkeyspace"))
+      .load()
 
-    cosine_similar.printSchema()
-    cosine_similar.groupBy().count().show()
+    val hotel_review = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "hotel_review", "keyspace" -> "testkeyspace"))
+      .load()
 
-    root_hotel.printSchema()
-    root_hotel.groupBy().count().show()
+    val hotel_logging = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
+      .load()
 
     val mapping_root = cosine_similar
       .join(hotel_mapping,Seq("domain_id","domain_hotel_id"),"inner")
       .join(root_hotel,Seq("id"),"inner")
+
+    val mapping_domain_hotel = mapping_root.select(
+      col("table_id"),
+      col("id"),
+      col("hotel_id"),
+      col("domain_id"),
+      col("domain_hotel_id")
+    )
+
+    val mapping_hotel_service = hotel_logging
+      .join(mapping_domain_hotel,Seq("hotel_id"),"inner")
+      .filter(col("hotel_id") isNotNull)
+
+    val mapping_hotel_review = hotel_review
+      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
+    
+    val mapping_hotel_review_clean = mapping_hotel_review.select(
+      col("review_id"),
+      col("domain_id"),
+      col("domain_hotel_id"),
+      col("review_datetime"),
+      col("score")
+    )
+
+    val mapping_hotel_logging = hotel_logging
+      .join(mapping_domain_hotel,mapping_domain_hotel.col("id")===hotel_logging.col("hotel_id"),"inner")
 
     mapping_root.createCassandraTable("testkeyspace", "mapping_root")
     mapping_root
@@ -361,8 +435,14 @@ class DataPreprocessingNew {
       .mode("Append")
       .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace"))
       .save()
+
+
+    print(Calendar.getInstance().getTime + ": Mapping process is success\n")
   }
+
 }
+
+
 
 
 

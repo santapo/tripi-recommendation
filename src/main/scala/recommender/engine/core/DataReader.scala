@@ -49,7 +49,7 @@ object DataReader {
       newkey = newkey.toLowerCase().trim
       val dataHotel = this.hotel_table
         .filter(col("province") === (newkey))
-      val dataHotelRank = dataHotel.orderBy(desc("rank"))
+      val dataHotelRank = dataHotel.orderBy(col("rank").desc)
       val data = dataHotelRank.limit(page*5)
       val readdata = new readData(data)
 
