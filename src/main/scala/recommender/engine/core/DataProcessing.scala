@@ -57,10 +57,6 @@ class DataProcessing {
       .options(Map("table" -> "hotel_service", "keyspace" -> "testkeyspace"))
       .load()
 
-    val cosine_similar = spark.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "cosine_similar", "keyspace" -> "testkeyspace"))
-      .load()
 
     val root_hotel = spark.read
       .format("org.apache.spark.sql.cassandra")

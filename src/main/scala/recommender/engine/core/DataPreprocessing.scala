@@ -328,33 +328,6 @@ class DataPreprocessing {
       .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
       .save()
 
-    Thread.sleep(200000)
-
-    // Cleaning and Filtering cosine_hotel table
-    val cosine_hotel_top = cosine_hotel.filter(col("cosine_name") > 0.87
-      && col("distance") < 0.045 && col("similar_point") > 0.86
-      && col("rank_point") === 1)
-
-    val cosine_hotel_top_clean = cosine_hotel_top.select(
-      col("id").cast("String"),
-      col("hotel_id").cast("Int"),
-      col("domain_id").cast("Int"),
-      col("domain_hotel_id").cast("BigInt"),
-      col("cosine_name").cast("Double"),
-      col("cosine_address").cast("Double"),
-      col("distance").cast("Double"),
-      col("similar_point").cast("Double"),
-      col("rank_point").cast("Int"))
-      .dropDuplicates("domain_id", "domain_hotel_id")
-
-    cosine_hotel_top_clean.createCassandraTable("testkeyspace", "cosine_similar")
-    cosine_hotel_top_clean
-      .write
-      .format("org.apache.spark.sql.cassandra")
-      .mode("Append")
-      .options(Map("table" -> "cosine_similar", "keyspace" -> "testkeyspace"))
-      .save()
-
     println(Calendar.getInstance().getTime + ": Data Preprocessing is Success\n")
 
     dataMap.mapping()
