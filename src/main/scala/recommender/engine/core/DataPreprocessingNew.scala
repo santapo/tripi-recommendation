@@ -12,6 +12,7 @@ class DataPreprocessingNew {
   val spark = org.apache.spark.sql.SparkSession
     .builder()
     .config("spark.debug.maxToStringFields", 100)
+    .config("spark.sql.autoBroadcastJoinThreshold","-1")
     .config("spark.cassandra.connection.host", "localhost")
     .master("local[*]")
     .appName("phoenix-tripi-dataprocessing")
@@ -28,27 +29,31 @@ class DataPreprocessingNew {
     session.execute("DROP KEYSPACE IF EXISTS testkeyspace")
     session.execute("CREATE KEYSPACE testkeyspace WITH replication = {'class':'SimpleStrategy', 'replication_factor':1}")
     session.execute("USE testkeyspace")
-    session.execute("CREATE TABLE testkeyspace.hotel_table " +
+    session.execute("CREATE TABLE testkeyspace.mapping_root " +
       "(id text PRIMARY KEY," +
-      " provider int," +
-      " province text," +
       " name text," +
-      " rank double," +
       " address text," +
+      " logo text," +
       " star_number int," +
+      " checkin_time text," +
+      " checkout_time text," +
       " overall_score float," +
-      " price text," +
+      " description text," +
+      " avg_price float," +
+      " longitude float," +
+      " latitude float," +
       " suggest list<frozen <map<text,text>>>)")
   }
   )
 
-  val dataMap = new DataProcessing
+  val dataProcess = new DataProcessingNew
 
   def dataToCassandra(): Unit = {
 
     /**
      * Read data from Clickhouse Database then save in Cassandra
      **/
+    println(Calendar.getInstance().getTime + ": Data is Saving to Cassandra... \n")
 
     //
     // Read data from Clickhouse
@@ -174,9 +179,7 @@ class DataPreprocessingNew {
 
     val price_min_max = hotel_price_daily_clean
       .groupBy("domain_id","domain_hotel_id")
-      .agg(max("final_amount_min").as("max_price"),
-        min("final_amount_min").as("min_price"),
-        avg("final_amount_min").as("avg_price"))
+      .agg(avg("final_amount_min").as("avg_price"))
 
     val hotel_mapping_clean = hotel_mapping.select(
       col("id").cast("String"),
@@ -205,14 +208,12 @@ class DataPreprocessingNew {
       col("name").cast("String").as("name_mapping"),
       col("address").cast("String").as("address_mapping"),
       col("url").cast("String"),
-      col("longitude").cast("Float").as("long_mapping"),
-      col("latitude").cast("Float").as("lat_mapping"),
+      col("longitude").cast("Float").as("longitude_mapping"),
+      col("latitude").cast("Float").as("latitude_mapping"),
       col("star_number").cast("Int").as("star_mapping"),
       col("overall_score").cast("Float").as("overall_mapping"),
       col("checkin_time").cast("String").as("checkin_mapping"),
       col("checkout_time").cast("String").as("checkout_mapping"),
-      col("max_price").cast("Float"),
-      col("min_price").cast("Float"),
       col("avg_price").cast("Float")
     )
 
@@ -286,13 +287,13 @@ class DataPreprocessingNew {
       col("name").cast("String"),
       col("address").cast("String"),
       col("logo").cast("String"),
-      col("province_id").cast("Int"),
-      col("district_id").cast("Int"),
-      col("street_id").cast("Int"),
+      col("longitude").cast("Float"),
+      col("latitude").cast("Float"),
       col("star_number").cast("Int"),
       col("checkin_time").cast("String"),
       col("checkout_time").cast("String"),
-      col("overall_score").cast("Float"))
+      col("overall_score").cast("Float"),
+      col("description").cast("String"))
 
     roothotel_info_clean.createCassandraTable("testkeyspace", "root_hotel")
     roothotel_info_clean
@@ -302,8 +303,9 @@ class DataPreprocessingNew {
       .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
       .save()
 
+    // clean review and logging
     val hotel_review_clean = hotel_review.select(
-      col("id").cast("String"),
+      col("id").cast("String").as("table_review_id"),
       col("review_id").cast("Int"),
       col("domain_id").cast("Int"),
       col("domain_hotel_id").cast("BigInt"),
@@ -320,12 +322,15 @@ class DataPreprocessingNew {
       .save()
 
     val hotel_logging_clean = hotel_logging.select(
-      col("id").cast("String"),
+      col("id").cast("String").as("logging_id"),
       col("user_id").cast("BigInt"),
+      col("session_id").cast("BigInt"),
       col("action_name").cast("String"),
-      col("hotel_id").cast("Int"),
+      col("hotel_id").cast("Int").as("id"),
+      col("reviews_number").cast("Int"),
       col("room_night").cast("Int"),
-      col("adult_num").cast("Int")
+      col("adult_num").cast("Int"),
+      col("rank_on_page").cast("Int")
     )
 
     hotel_logging_clean.createCassandraTable("testkeyspace","hotel_logging")
@@ -364,86 +369,11 @@ class DataPreprocessingNew {
 
     println(Calendar.getInstance().getTime + ": Data is Saved\n")
 
+    dataProcess.dataMapping()
   }
 
-  def dataMapping(): Unit = {
-    println(Calendar.getInstance().getTime + ": Start data mapping...\n")
-
-    val hotel_mapping = spark.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_mapping", "keyspace" -> "testkeyspace"))
-      .load()
-
-    val cosine_similar = spark.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "cosine_similar", "keyspace" -> "testkeyspace"))
-      .load()
-
-    val root_hotel = spark.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
-      .load()
-
-    val hotel_service = spark.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_service", "keyspace" -> "testkeyspace"))
-      .load()
-
-    val hotel_review = spark.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_review", "keyspace" -> "testkeyspace"))
-      .load()
-
-    val hotel_logging = spark.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
-      .load()
-
-    val mapping_root = cosine_similar
-      .join(hotel_mapping,Seq("domain_id","domain_hotel_id"),"inner")
-      .join(root_hotel,Seq("id"),"inner")
-
-    val mapping_domain_hotel = mapping_root.select(
-      col("table_id"),
-      col("id"),
-      col("hotel_id"),
-      col("domain_id"),
-      col("domain_hotel_id")
-    )
-
-    val mapping_hotel_service = hotel_service
-      .join(mapping_domain_hotel,Seq("hotel_id"),"inner")
-      .filter(col("hotel_id") isNotNull)
-
-    val mapping_hotel_review = hotel_review
-      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
-
-    val mapping_hotel_review_clean = mapping_hotel_review.select(
-      col("review_id"),
-      col("domain_id"),
-      col("domain_hotel_id"),
-      col("review_datetime"),
-      col("score")
-    )
-
-    val mapping_hotel_logging = hotel_logging
-      .join(mapping_domain_hotel,mapping_domain_hotel.col("id")===hotel_logging.col("hotel_id"),"inner")
-
-    mapping_root.createCassandraTable("testkeyspace", "mapping_root")
-    mapping_root
-      .write
-      .format("org.apache.spark.sql.cassandra")
-      .mode("Append")
-      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace"))
-      .save()
-
-
-    print(Calendar.getInstance().getTime + ": Mapping process is success\n")
-  }
 
 }
-
-
 
 
 
