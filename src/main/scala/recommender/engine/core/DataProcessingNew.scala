@@ -93,6 +93,8 @@ class DataProcessingNew {
     val mapping_root_agg_2nd = mapping_root_agg_1st
       .withColumn("map_long",mapLongitudeUdf(col("longitude"),col("longitude_mapping")))
       .withColumn("map_lat",mapLatitudeUdf(col("latitude"),col("latitude_mapping")))
+      .filter(col("longitude")>102 && col("latitude")>8)
+      .filter(col("longitude")<115 && col("latitude")<25)
 
     val mapping_root_clean = mapping_root_agg_2nd.select(
       col("id"),
@@ -118,7 +120,7 @@ class DataProcessingNew {
       .save()
 
     // key table
-    val mapping_domain_hotel = mapping_root.select(
+    val mapping_domain_hotel = mapping_root_agg_2nd.select(
       col("table_id"),
       col("id"),
       col("hotel_id"),
