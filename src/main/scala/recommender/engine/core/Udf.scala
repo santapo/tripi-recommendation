@@ -151,11 +151,25 @@ object Udf {
     mapPrice
   }
 
+  val mapLongitude = (longitude: Float, longitude_mapping: Float) =>{
+    val mapLongitude = if((longitude<102) && (longitude>115)) longitude_mapping else longitude
+    mapLongitude
+  }
+
+  val mapLatitude = (latitude: Float, latitude_mapping: Float) =>{
+    val mapLatitude = if((latitude<8) || (latitude>24)) latitude_mapping else latitude
+    mapLatitude
+  }
+
   val convertPrice = (price: Float) =>{
     val formatter = java.text.NumberFormat.getIntegerInstance
     val priceString = formatter.format(price).toString
     priceString
   }
+
+  val mapLongitudeUdf = udf(mapLongitude)
+
+  val mapLatitudeUdf = udf(mapLatitude)
 
   val convertPriceUdf = udf(convertPrice)
 
