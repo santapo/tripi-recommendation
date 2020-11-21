@@ -29,9 +29,11 @@ class AkkaServer {
         path("search_query") {
           parameters('page.as[Int],'key.as[String]) { (page, key) =>
             complete {
-              val hotel_table = readData.readData()
-              val getprice = hotel_table.search(page, key).load()
-              getprice
+//              val hotel_table = readData.readData()
+//              val getprice = hotel_table.search(page, key).load()
+//              getprice
+              val hello = 'Helloo'
+              hello
             }
           }
         }
@@ -39,8 +41,8 @@ class AkkaServer {
     )
 
     // Binding to the host and port
-    val bindingFuture = Http().bindAndHandle(route, "localhost", 3800)
-    println(Calendar.getInstance().getTime + s": Server online at http://localhost:3800/\nPress Enter to stop...\n")
+    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+    println(Calendar.getInstance().getTime + s": Server online at http://localhost:8080/\nPress Enter to stop...\n")
     StdIn.readLine() // let the server run until user presses Enter
 
     bindingFuture

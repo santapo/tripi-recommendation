@@ -14,11 +14,11 @@ object Main {
 //
 //    data.dataToCassandra()
 
-    val data = new DataPreprocessing
-    data.dataFiltering()
+//    val data = new DataPreprocessing
+//    data.dataFiltering()
 
-//    val server = new AkkaServer
-//    server.start()
+    val server = new AkkaServer
+    server.start()
 
   }
 }
