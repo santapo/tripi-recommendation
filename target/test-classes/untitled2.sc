@@ -51,12 +51,12 @@ hotel_table.printSchema()
 val schema = Encoders.product[hotel]
 
 val data_1 = data
-  .na.drop()
+  .collectAsList.toList
 val jsonString = Json(DefaultFormats).write(data_1)
 
-data_1.printSchema()
+data_1
 
-data_1.toDF()
+println(data_1)
 
-data.as[hotel](schema)
+
 

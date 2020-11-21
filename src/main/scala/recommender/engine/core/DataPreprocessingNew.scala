@@ -303,6 +303,7 @@ class DataPreprocessingNew {
       .save()
 
     val hotel_review_clean = hotel_review.select(
+      col("id").cast("String"),
       col("review_id").cast("Int"),
       col("domain_id").cast("Int"),
       col("domain_hotel_id").cast("BigInt"),
@@ -323,7 +324,8 @@ class DataPreprocessingNew {
       col("user_id").cast("BigInt"),
       col("action_name").cast("String"),
       col("hotel_id").cast("Int"),
-      col("room_night").cast("Int")
+      col("room_night").cast("Int"),
+      col("adult_num").cast("Int")
     )
 
     hotel_logging_clean.createCassandraTable("testkeyspace","hotel_logging")
@@ -362,7 +364,6 @@ class DataPreprocessingNew {
 
     println(Calendar.getInstance().getTime + ": Data is Saved\n")
 
-    dataMapping()
   }
 
   def dataMapping(): Unit = {
@@ -410,13 +411,13 @@ class DataPreprocessingNew {
       col("domain_hotel_id")
     )
 
-    val mapping_hotel_service = hotel_logging
+    val mapping_hotel_service = hotel_service
       .join(mapping_domain_hotel,Seq("hotel_id"),"inner")
       .filter(col("hotel_id") isNotNull)
 
     val mapping_hotel_review = hotel_review
       .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
-    
+
     val mapping_hotel_review_clean = mapping_hotel_review.select(
       col("review_id"),
       col("domain_id"),
@@ -452,7 +453,7 @@ class dataPreprocessingNewActor(DataPreprocessingNew: DataPreprocessingNew) exte
 
   // Implement receive mehtod
   def  receive = {
-    case dataFiltering => {
+    case dataToCassandra => {
       println(Calendar.getInstance().getTime + ": Data is Saving to Cassandra... \n")
       DataPreprocessingNew.dataToCassandra()
     }

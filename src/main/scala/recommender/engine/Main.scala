@@ -10,11 +10,15 @@ object Main {
 //
 //    getdata.mapping()
 
-    val server = new AkkaServer
-    server.start()
+//    val data = new DataPreprocessingNew
+//
+//    data.dataToCassandra()
 
-    // val server = new AkkaServer
-    // server.start()
+    val data = new DataPreprocessing
+    data.dataFiltering()
+
+//    val server = new AkkaServer
+//    server.start()
 
   }
 }

@@ -79,7 +79,7 @@ class DataProcessing {
     val hotel_rank = mapping_with_service
       .withColumn("rank", col("service_score") / col("price_score"))
 
-    for(province_id <- 1 to 3) {
+    for(province_id <- 1 to 63) {
 
       val hotel_rank_region = hotel_rank.filter(col("province_id").cast("Int") === province_id)
       val root_hotel_region = root_hotel.filter(col("province_id").cast("Int") === province_id)

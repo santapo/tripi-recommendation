@@ -2,7 +2,7 @@ import org.apache.spark.sql.functions.col
 
 val spark = org.apache.spark.sql.SparkSession
   .builder()
-  .config("spark.debug.maxToStringFields",100)
+  .config("spark.debug.maxToStringFields", 100)
   .config("spark.sql.autoBroadcastJoinThreshold","-1")
   .config("spark.cassandra.connection.host", "localhost")
   .master("local[*]")
@@ -14,6 +14,7 @@ import spark.implicits._
 val sparkContext = spark.sparkContext
 
 sparkContext.setLogLevel("WARN")
+
 
 val hotel_mapping = spark.read
   .format("org.apache.spark.sql.cassandra")
@@ -30,36 +31,30 @@ val root_hotel = spark.read
   .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
   .load()
 
-hotel_mapping.printSchema()
-hotel_mapping.groupBy().count().show()
-
-cosine_similar.printSchema()
-cosine_similar.groupBy().count().show()
-
-root_hotel.printSchema()
-root_hotel.groupBy().count().show()
+val hotel_logging = spark.read
+  .format("org.apache.spark.sql.cassandra")
+  .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
+  .load()
 
 val mapping_root = cosine_similar
   .join(hotel_mapping,Seq("domain_id","domain_hotel_id"),"inner")
   .join(root_hotel,Seq("id"),"inner")
 
-mapping_root.printSchema()
+val mapping_domain_hotel = mapping_root.select(
+  col("table_id"),
+  col("id"),
+  col("hotel_id"),
+  col("domain_id"),
+  col("domain_hotel_id")
+)
 
-mapping_root.show()
+val mapping_hotel_logging = hotel_logging
+  .join(mapping_domain_hotel,mapping_domain_hotel.col("id")===hotel_logging.col("hotel_id"),"inner")
 
-mapping_root.show()
+mapping_hotel_logging.printSchema()
 
-mapping_root.groupBy().count().show()
+mapping_hotel_logging.show()
 
-mapping_root.groupBy("domain_id").count().show()
+mapping_hotel_logging.groupBy().count().show()
 
-mapping_root.groupBy("domain_hotel_id").count().show()
-
-mapping_root.groupBy("id").count().orderBy(col("count").desc).show()
-
-
-mapping_root.groupBy("domain_hotel_id").count().orderBy(col("count").desc).show()
-
-mapping_root.where(col("domain_hotel_id") === 256084).show()
-
-mapping_root.groupBy("hotel_id").count().orderBy(col("count").desc).show()
+hotel_logging.show(1000,false)

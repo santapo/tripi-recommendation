@@ -28,6 +28,17 @@ class DataPreprocessing {
     session.execute("DROP KEYSPACE IF EXISTS testkeyspace")
     session.execute("CREATE KEYSPACE testkeyspace WITH replication = {'class':'SimpleStrategy','replication_factor':1}")
     session.execute("USE testkeyspace")
+    session.execute("CREATE TABLE testkeyspace.hotel_table " +
+      "(id text PRIMARY KEY," +
+      " provider int," +
+      " province text," +
+      " name text," +
+      " rank double," +
+      " address text," +
+      " star_number int," +
+      " overall_score float," +
+      " price text," +
+      " suggest list<frozen <map<text,text>>>)")
   }
   )
 

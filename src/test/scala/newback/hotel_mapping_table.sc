@@ -12,15 +12,16 @@ val sparkContext = spark.sparkContext
 
 sparkContext.setLogLevel("WARN")
 
-val hotel_service = spark.read
+val hotel_mapping = spark.read
   .format("org.apache.spark.sql.cassandra")
-  .options(Map("table" -> "hotel_service", "keyspace" -> "testkeyspace"))
+  .options(Map("table" -> "hotel_mapping", "keyspace" -> "testkeyspace"))
   .load()
 
-hotel_service.show()
+hotel_mapping.show()
 
-hotel_service.printSchema()
+hotel_mapping.printSchema()
 
-hotel_service.groupBy().count().show()
+hotel_mapping.groupBy().count().show()
+
 
 
