@@ -56,6 +56,16 @@ object DataReader {
       readdata
     }
 
+    def getListTopProvince (page:Int) : readData = {
+      val dataHotel = this.hotel_table
+        .groupBy("province").avg("rank")
+      println(dataHotel)
+      val dataHotelRank = dataHotel.orderBy(col("avg(rank)").desc)
+      val data = dataHotelRank.limit(page*5)
+      val readdata = new readData(data)
+      readdata
+    }
+
     def load(): String = {
 
       val data = this.hotel_table
