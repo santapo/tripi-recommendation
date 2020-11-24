@@ -6,6 +6,9 @@ import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector._
 import org.apache.spark.sql.functions._
 import Udf._
+import org.apache.spark.ml.clustering.KMeans
+import org.apache.spark.ml.feature.VectorAssembler
+
 
 class DataProcessingNew {
   val spark = org.apache.spark.sql.SparkSession
@@ -112,12 +115,7 @@ class DataProcessingNew {
       col("suggest")
     )
 
-    mapping_root_clean
-      .write
-      .format("org.apache.spark.sql.cassandra")
-      .mode("Append")
-      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace"))
-      .save()
+
 
     // key table
     val mapping_domain_hotel = mapping_root_agg_2nd.select(
@@ -190,6 +188,35 @@ class DataProcessingNew {
       col("score")
     )
 
+    val mapping_review_count = mapping_hotel_review_clean.groupBy("id").count()
+
+    val mapping_root_clean_with_review_count = mapping_root_clean
+      .join(mapping_review_count,Seq("id"),"inner")
+
+    val mapping_root_final = mapping_root_clean_with_review_count.select(
+      col("id"),
+      col("name"),
+      col("address"),
+      col("logo"),
+      col("star_number"),
+      col("checkin_time"),
+      col("checkout_time"),
+      col("overall_score"),
+      col("description"),
+      col("avg_price"),
+      col("longitude"),
+      col("latitude"),
+      col("count").as("review_count"),
+      col("suggest")
+    )
+
+    mapping_root_final
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace"))
+      .save()
+
     mapping_hotel_review_clean.createCassandraTable("testkeyspace","mapping_review")
     mapping_hotel_review_clean
       .write
@@ -221,5 +248,81 @@ class DataProcessingNew {
       .save()
 
     print(Calendar.getInstance().getTime + ": Mapping process is success\n")
+  }
+
+  def dataClustering(): Unit = {
+    print(Calendar.getInstance().getTime + ": Clustering with Kmeans\n")
+
+    //
+    // Read data from Cassandra
+    //
+    val mapping_root = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace"))
+      .load()
+
+    val mapping_review = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "mapping_review", "keyspace" -> "testkeyspace"))
+      .load()
+
+    // Clustering
+    val geolocation = mapping_root.select(
+      col("id"),
+      col("longitude"),
+      col("latitude")
+    )
+
+    val cols = Array("latitude","longitude")
+    val assembler = new VectorAssembler().setInputCols(cols).setOutputCol("features")
+    val featureDf = assembler.transform(geolocation)
+
+    val kmeans = new KMeans()
+      .setK(100)
+      .setFeaturesCol("features")
+      .setPredictionCol("hotel_cluster")
+
+    val kmeansModel = kmeans.fit(featureDf)
+
+    val cluster = kmeansModel.transform(featureDf)
+
+    val cluster_clean = cluster.select(
+      col("id"),
+      col("hotel_cluster")
+    )
+
+    // Add hotel_cluster to mapping_review
+    val mapping_review_with_cluster = mapping_review
+      .join(cluster_clean,Seq("id"),"inner")
+
+    val new_review = mapping_review_with_cluster
+      .withColumn("end_date",to_date(lit("2020-08-30")))
+      .withColumn("date_distance",datediff(col("end_date"),col("review_datetime")))
+      .filter(col("date_distance") < 800)
+
+    val review_quantity_cluster = mapping_review_with_cluster
+      .groupBy("hotel_cluster").agg(
+      first(col("hotel_cluster")).as("hotel_cluster"),
+      avg(col("count").as("avg_by_cluster"))
+    ).withColumn("Quantity", calculateClusterQUdf(col("avg_by_cluster")))
+
+
+    val review_score_1st = new_review
+      .withColumn("score_1st_1",calulateReview_1stUdf(col("date_distance"),col("score")))
+      .withColumn("score_1st_2",calulateReview_1stUdf(col("date_distance"),lit("10")))
+      .groupBy("id").agg(
+      first(col("id")).as("id"),
+      first(col("hotel_cluster")).as("hotel_cluster"),
+      sum(col("score_1st_1")).as("score_1st_1"),
+      sum(col("score_1st_2")).as("score_1st_2"),
+      count(col("id")).as("sum_review_by_id")
+    ).join(review_quantity_cluster,Seq("hotel_cluster"),"inner")
+
+    val review_score_2nd =
+
+
+
+
+    print(Calendar.getInstance().getTime + ": Clustering is success\n")
   }
 }
