@@ -167,6 +167,25 @@ object Udf {
     priceString
   }
 
+  val calculateReview_1st = (date_distance: Int, Score: Float) =>{
+    val quality_score = Score/date_distance
+    quality_score
+  }
+
+  val calculateClusterQ = (avg_by_cluster: Float) =>{
+    val Q = avg_by_cluster*1.44
+    Q
+  }
+
+  val calculateReview_2nd = (Prob: Float, score_1st: Float, sum_review_by_id: Int, Q: Float) =>{
+    val score_2nd = Prob*score_1st + (1-Prob)*(1)
+    score_2nd
+  }
+
+  val calculateClusterQUdf = udf(calculateClusterQ)
+
+  val calulateReview_1stUdf = udf(calculateReview_1st)
+
   val mapLongitudeUdf = udf(mapLongitude)
 
   val mapLatitudeUdf = udf(mapLatitude)
