@@ -42,6 +42,7 @@ class DataPreprocessingNew {
       " avg_price float," +
       " longitude float," +
       " latitude float," +
+      " review_count" +
       " suggest list<frozen <map<text,text>>>)")
   }
   )
