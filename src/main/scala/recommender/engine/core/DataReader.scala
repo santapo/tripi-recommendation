@@ -66,6 +66,20 @@ object DataReader {
       readdata
     }
 
+    def getListLowPrice (page:Int,key:String) : readData = {
+      val patternD = new Regex("đ|ð")
+      var newkey = patternD.replaceAllIn(key, "d")
+      newkey = stripAccents(newkey)
+
+      newkey = newkey.toLowerCase().trim
+      val dataHotel = this.hotel_table
+        .filter(col("province") === (newkey))
+      val dataHotelRank = dataHotel.orderBy(col("price").asc)
+      val data = dataHotelRank.limit(page*5)
+      val readdata = new readData(data)
+      readdata
+    }
+
     def load(): String = {
 
       val data = this.hotel_table

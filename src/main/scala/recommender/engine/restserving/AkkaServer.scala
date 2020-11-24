@@ -50,8 +50,21 @@ class AkkaServer {
         }
       }
     )
+    val routeLowPrice: Route = concat(
+      get {
+        path("low_price") {
+          parameters('page.as[Int],'key.as[String]) { (page, key) =>
+            complete {
+              val hotel_table = readData.readData()
+              val getprice = hotel_table.getListLowPrice(page, key).load()
+              getprice
+            }
+          }
+        }
+      }
+    )
     // Binding to the host and port
-    val bindingFuture = Http().bindAndHandle(route ~ routeProvince, "localhost", 8080)
+    val bindingFuture = Http().bindAndHandle(route ~ routeProvince ~ routeLowPrice, "localhost", 8080)
     println(Calendar.getInstance().getTime + s": Server online at http://localhost:8080/\nPress Enter to stop...\n")
     StdIn.readLine() // let the server run until user presses Enter
 
