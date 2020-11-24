@@ -85,7 +85,7 @@ class DataProcessingNew {
       first(col("checkout_time")).as("checkout_time"),
       first(col("overall_score")).as("overall_score"),
       first(col("description")).as("description"),
-      min(col("avg_price")).as("avg_price"),
+      avg(col("avg_price")).as("avg_price"),
       first(col("longitude")).as("longitude"),
       first(col("latitude")).as("latitude"),
       avg(col("longitude_mapping")).as("longitude_mapping"),
@@ -266,6 +266,11 @@ class DataProcessingNew {
       .options(Map("table" -> "mapping_review", "keyspace" -> "testkeyspace"))
       .load()
 
+    val mapping_service = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace"))
+      .load()
+
     // Clustering
     val geolocation = mapping_root.select(
       col("id"),
@@ -304,12 +309,11 @@ class DataProcessingNew {
       .groupBy("hotel_cluster").agg(
       first(col("hotel_cluster")).as("hotel_cluster"),
       avg(col("count").as("avg_by_cluster"))
-    ).withColumn("Quantity", calculateClusterQUdf(col("avg_by_cluster")))
-
+    ).withColumn("Quantity", lit(1.44)*col("avg_by_cluster"))
 
     val review_score_1st = new_review
-      .withColumn("score_1st_1",calulateReview_1stUdf(col("date_distance"),col("score")))
-      .withColumn("score_1st_2",calulateReview_1stUdf(col("date_distance"),lit("10")))
+      .withColumn("score_1st_1",col("score")/col("date_distance"))
+      .withColumn("score_1st_2",lit(10)/col("date_distance"))
       .groupBy("id").agg(
       first(col("id")).as("id"),
       first(col("hotel_cluster")).as("hotel_cluster"),
@@ -318,8 +322,53 @@ class DataProcessingNew {
       count(col("id")).as("sum_review_by_id")
     ).join(review_quantity_cluster,Seq("hotel_cluster"),"inner")
 
-    val review_score_2nd =
+    val review_score_2nd = review_score_1st
+      .withColumn("final_review_score",
+        lit(5)*col("score_1st_1")/col("score_1st_2")
+          +lit(5)*(lit(1)-pow(lit(3),-col("sum_review_by_id")/col("Quantity"))))
 
+    val mapping_review_score = review_score_2nd.select(
+      col("id"),
+      col("hotel_cluster"),
+      col("final_review_score")
+    )
+
+    mapping_review_score.createCassandraTable("testkeyspace","mapping_review_score")
+    mapping_review_score
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "mapping_review_score", "keyspace" -> "testkeyspace"))
+      .save()
+
+    // Add price/service score
+    val mapping_price_with_cluster = mapping_root.select(
+      col("id"),
+      col("avg_price")
+    ).join(cluster_clean,Seq("id"),"inner")
+
+    val price_quantity_cluster = mapping_price_with_cluster
+      .groupBy("hotel_cluster").agg(
+      first(col("hotel_cluster")).as("hotel_cluster"),
+      avg(col("avg_price")).as("avg_price_cluster")
+    ).withColumn("Quantity",lit(1.44)*col("avg_price_cluster"))
+
+    val price_score = mapping_price_with_cluster
+      .join(price_quantity_cluster,Seq("hotel_cluster"),"inner")
+      .withColumn("price_score",sigmoidPriceUdf(col("avg_price"),col("avg_price_cluster")))
+
+    val service_score = mapping_service
+      .withColumn("service_score",sigmoidServiceUdf(
+        col("relax_spa"),
+        col("relax_massage"),
+        col("relax_outdoor_pool"),
+        col("relax_sauna"),
+        col("cleanliness_score"),
+        col("meal_score")).cast("Float"))
+
+    val service_per_price_score = price_score
+      .join(service_score,Seq("id"),"inner")
+      .withColumn("service_per_price_score",col("service_score")/col("price_score"))
 
 
 
