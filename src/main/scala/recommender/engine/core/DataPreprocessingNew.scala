@@ -42,7 +42,7 @@ class DataPreprocessingNew {
       " avg_price float," +
       " longitude float," +
       " latitude float," +
-      " review_count" +
+      " review_count int," +
       " suggest list<frozen <map<text,text>>>)")
   }
   )
@@ -342,7 +342,7 @@ class DataPreprocessingNew {
       .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
       .save()
 
-    Thread.sleep(200000)
+    Thread.sleep(120000)
 
     // Cleaning and Filtering cosine_hotel table
     val cosine_hotel_top = cosine_hotel.filter(col("similar_point") > 0.85
