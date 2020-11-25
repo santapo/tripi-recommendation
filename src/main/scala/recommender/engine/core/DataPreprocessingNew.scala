@@ -44,6 +44,23 @@ class DataPreprocessingNew {
       " latitude float," +
       " review_count int," +
       " suggest list<frozen <map<text,text>>>)")
+
+    session.execute("CREATE TABLE testkeyspace.hotel_table " +
+      "(id text PRIMARY KEY," +
+      " name text," +
+      " address text," +
+      " logo text," +
+      " star_number int," +
+      " checkin_time text," +
+      " checkout_time text," +
+      " overall_score float," +
+      " description text," +
+      " avg_price float," +
+      " longitude float," +
+      " latitude float," +
+      " review_count int," +
+      " suggest list<frozen <map<text,text>>>)," +
+      " Final_Score Double")
   }
   )
 
@@ -146,6 +163,24 @@ class DataPreprocessingNew {
       .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
       .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
       .option("dbtable", "hotel_price_daily")
+      .option("user", "FiveF1")
+      .option("password", "z3hE3TkjFzNyXhjb6iek")
+      .load()
+
+    val hotel_location = spark.read
+      .format("jdbc")
+      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+      .option("dbtable", "hotel_location")
+      .option("user", "FiveF1")
+      .option("password", "z3hE3TkjFzNyXhjb6iek")
+      .load()
+
+    val hotel_distance_to_location = spark.read
+      .format("jdbc")
+      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+      .option("dbtable", "hotel_distance_to_location")
       .option("user", "FiveF1")
       .option("password", "z3hE3TkjFzNyXhjb6iek")
       .load()
@@ -340,6 +375,34 @@ class DataPreprocessingNew {
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
       .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
+      .save()
+
+    // Clean hotel location
+    val hotel_location_clean = hotel_location.select(
+      col("id").cast("String").as("location_id"),
+      col("domain_id").cast("Int"),
+      col("hotel_id").cast("String")
+    )
+
+    val hotel_mapping_location_distance = hotel_distance_to_location
+      .join(hotel_location_clean,Seq("location_id","domain_id"),"inner")
+      .select(
+        col("id").cast("String"),
+        col("domain_id"),
+        col("hotel_id"),
+        col("name").cast("String").as("location_name"),
+        col("distance").cast("Float"),
+        col("distance_unit").cast("String"),
+        col("duration").cast("Int"),
+        col("category").cast("String")
+      )
+
+    hotel_mapping_location_distance.createCassandraTable("testkeyspace", "hotel_location")
+    hotel_mapping_location_distance
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "hotel_location", "keyspace" -> "testkeyspace"))
       .save()
 
     Thread.sleep(120000)

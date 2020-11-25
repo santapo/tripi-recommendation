@@ -9,6 +9,8 @@ import Udf._
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.feature.VectorAssembler
 
+import scala.math.E
+
 
 class DataProcessingNew {
   val spark = org.apache.spark.sql.SparkSession
@@ -88,16 +90,16 @@ class DataProcessingNew {
       avg(col("avg_price")).as("avg_price"),
       first(col("longitude")).as("longitude"),
       first(col("latitude")).as("latitude"),
-      avg(col("longitude_mapping")).as("longitude_mapping"),
-      avg(col("latitude_mapping")).as("latitude_mapping"),
+      max(col("longitude_mapping")).as("longitude_mapping"),
+      max(col("latitude_mapping")).as("latitude_mapping"),
       collect_list("suggest").as("suggest")
     )
 
     val mapping_root_agg_2nd = mapping_root_agg_1st
       .withColumn("map_long",mapLongitudeUdf(col("longitude"),col("longitude_mapping")))
       .withColumn("map_lat",mapLatitudeUdf(col("latitude"),col("latitude_mapping")))
-      .filter(col("longitude")>102 && col("latitude")>8)
-      .filter(col("longitude")<115 && col("latitude")<25)
+      .filter(col("map_long")>102 && col("map_lat")>8)
+      .filter(col("map_long")<115 && col("map_lat")<25)
 
     val mapping_root_clean = mapping_root_agg_2nd.select(
       col("id"),
@@ -110,15 +112,14 @@ class DataProcessingNew {
       col("overall_score"),
       col("description"),
       col("avg_price"),
-      col("longitude"),
-      col("latitude"),
+      col("map_long").as("longitude"),
+      col("latitude").as("latitude"),
       col("suggest")
     )
 
 
-
     // key table
-    val mapping_domain_hotel = mapping_root_agg_2nd.select(
+    val mapping_domain_hotel = mapping_root.select(
       col("table_id"),
       col("id"),
       col("hotel_id"),
@@ -275,7 +276,8 @@ class DataProcessingNew {
     val geolocation = mapping_root.select(
       col("id"),
       col("longitude"),
-      col("latitude")
+      col("latitude"),
+      col("review_count")
     )
 
     val cols = Array("latitude","longitude")
@@ -293,29 +295,27 @@ class DataProcessingNew {
 
     val cluster_clean = cluster.select(
       col("id"),
-      col("hotel_cluster")
+      col("hotel_cluster"),
+      col("review_count")
     )
 
-    // Add hotel_cluster to mapping_review
+    // Add hotel_cluster to mapping_review -> mapping_review_score
     val mapping_review_with_cluster = mapping_review
-      .join(cluster_clean,Seq("id"),"inner")
+      .join(cluster_clean,Seq("id"),"right")
 
     val new_review = mapping_review_with_cluster
-      .withColumn("end_date",to_date(lit("2020-08-30")))
+      .withColumn("end_date",to_date(lit("2020-09-08")))
       .withColumn("date_distance",datediff(col("end_date"),col("review_datetime")))
-      .filter(col("date_distance") < 800)
 
     val review_quantity_cluster = mapping_review_with_cluster
       .groupBy("hotel_cluster").agg(
-      first(col("hotel_cluster")).as("hotel_cluster"),
-      avg(col("count").as("avg_by_cluster"))
+      avg(col("review_count")).as("avg_by_cluster")
     ).withColumn("Quantity", lit(1.44)*col("avg_by_cluster"))
 
     val review_score_1st = new_review
       .withColumn("score_1st_1",col("score")/col("date_distance"))
       .withColumn("score_1st_2",lit(10)/col("date_distance"))
       .groupBy("id").agg(
-      first(col("id")).as("id"),
       first(col("hotel_cluster")).as("hotel_cluster"),
       sum(col("score_1st_1")).as("score_1st_1"),
       sum(col("score_1st_2")).as("score_1st_2"),
@@ -325,7 +325,7 @@ class DataProcessingNew {
     val review_score_2nd = review_score_1st
       .withColumn("final_review_score",
         lit(5)*col("score_1st_1")/col("score_1st_2")
-          +lit(5)*(lit(1)-pow(lit(3),-col("sum_review_by_id")/col("Quantity"))))
+          +lit(5)*(lit(1)-pow(lit(E),-col("sum_review_by_id")/col("Quantity"))))
 
     val mapping_review_score = review_score_2nd.select(
       col("id"),
@@ -385,6 +385,48 @@ class DataProcessingNew {
       .options(Map("table" -> "service_price_score", "keyspace" -> "testkeyspace"))
       .save()
 
-    print(Calendar.getInstance().getTime + ": Clustering is success\n")
+    print(Calendar.getInstance().getTime + ": Clustering is Success\n")
   }
+
+  def dataRankScore(): Unit = {
+    print(Calendar.getInstance().getTime + ": Ranking...\n")
+    //
+    // Read data from Cassandra
+    //
+    val service_price_score = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "service_price_score", "keyspace" -> "testkeyspace"))
+      .load()
+    val mapping_review_score = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "mapping_review_score", "keyspace" -> "testkeyspace"))
+      .load()
+    val mapping_root = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace"))
+      .load()
+
+    // FINAL SCORE
+    val score = service_price_score
+      .join(mapping_review_score,Seq("id"),"inner")
+      .withColumn("Final_Score",col("final_review_score")+lit(7)*col("service_per_price_score"))
+      .select(
+        col("id"),
+        col("hotel_cluster"),
+        col("Final_Score")
+      )
+
+    val hotel_table = mapping_root
+      .join(score,Seq("id"),"inner")
+
+    hotel_table
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "hotel_table", "keyspace" -> "testkeyspace"))
+      .save()
+
+    print(Calendar.getInstance().getTime + ": Ranking is Completed!\n")
+  }
+
 }
