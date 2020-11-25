@@ -167,12 +167,8 @@ object Udf {
     priceString
   }
 
-  val calculateReview = (Prob: Float, score_1st: Float, sum_review_by_id: Int, Q: Float) =>{
-    val score_2nd = Prob*score_1st + (1-Prob)*(1)
-    score_2nd
-  }
 
-  val calulateReviewUdf = udf(calculateReview)
+
 
   val mapLongitudeUdf = udf(mapLongitude)
 
