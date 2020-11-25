@@ -370,7 +370,20 @@ class DataProcessingNew {
       .join(service_score,Seq("id"),"inner")
       .withColumn("service_per_price_score",col("service_score")/col("price_score"))
 
+    val service_per_price_score_clean = service_per_price_score.select(
+      col("id"),
+      col("price_score"),
+      col("service_score"),
+      col("service_per_price_score")
+    )
 
+    service_per_price_score_clean.createCassandraTable("testkeyspace","service_price_score")
+    service_per_price_score_clean
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "service_price_score", "keyspace" -> "testkeyspace"))
+      .save()
 
     print(Calendar.getInstance().getTime + ": Clustering is success\n")
   }
