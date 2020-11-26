@@ -29,28 +29,34 @@ object DataReader {
   sparkContext.setLogLevel("WARN")
 
   case class hotel(id: String,
-                   provider: String,
                    name: String,
-                   province: String,
-                   rank: Double,
                    address: String,
+                   logo: String,
                    star_number: Int,
+                   checkin_time: String,
+                   checkout_time: String,
                    overall_score: Float,
-                   price: String,
-                   suggest: Array[Map[String,String]])
+                   description: String,
+                   avg_price: Float,
+                   longitude: Float,
+                   latitude: Float,
+                   review_count: Int,
+                   suggest: Array[Map[String,String]],
+                   review_list: Array[Map[String,String]],
+                   image_list: Array[String])
 
   class readData(val hotel_table:Dataset[Row]){
 
     def search (page:Int,key:String) : readData = {
-      val patternD = new Regex("đ|ð")
-      var newkey = patternD.replaceAllIn(key, "d")
-      newkey = stripAccents(newkey)
-
-      newkey = newkey.toLowerCase().trim
-      val dataHotel = this.hotel_table
-        .filter(col("address").contains(newkey))
-      val dataHotelRank = dataHotel.orderBy(col("rank").desc)
-      val data = dataHotelRank.limit(page*5)
+//      val patternD = new Regex("đ|ð")
+//      var newkey = patternD.replaceAllIn(key, "d")
+//      newkey = stripAccents(newkey)
+//
+//      newkey = newkey.toLowerCase().trim
+      val hotel_data = this.hotel_table
+        .filter(col("address").contains(key))
+      val hotel_rank = hotel_data.orderBy(col("rank").desc)
+      val data = hotel_rank.limit(page*5)
       val readdata = new readData(data)
 
       readdata
@@ -58,7 +64,10 @@ object DataReader {
 
     def load(): String = {
 
+
+
       val data = this.hotel_table
+
         .collectAsList
         .toList
       val jsonString = Json(DefaultFormats).write(data)
@@ -75,7 +84,6 @@ object DataReader {
       .options(Map("table" -> "hotel_table", "keyspace" -> "testkeyspace"))
       .load()
       .cache()
-      .filter(col("price").cast("String")=!=("0"))
 
     val readdata = new readData(hotel_table)
     readdata
