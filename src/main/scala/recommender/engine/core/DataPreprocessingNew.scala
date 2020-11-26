@@ -43,10 +43,13 @@ class DataPreprocessingNew {
       " longitude float," +
       " latitude float," +
       " review_count int," +
-      " suggest list<frozen <map<text,text>>>)")
+      " suggest list<frozen <map<text,text>>>," +
+      " review_list list<frozen <map<text,text>>>," +
+      " image_list list<text>)")
 
     session.execute("CREATE TABLE testkeyspace.hotel_table " +
       "(id text PRIMARY KEY," +
+      " hotel_cluster int," +
       " name text," +
       " address text," +
       " logo text," +
@@ -59,8 +62,10 @@ class DataPreprocessingNew {
       " longitude float," +
       " latitude float," +
       " review_count int," +
-      " suggest list<frozen <map<text,text>>>)," +
-      " Final_Score Double")
+      " suggest list<frozen <map<text,text>>>," +
+      " review_list list<frozen <map<text,text>>>," +
+      " image_list list<text>," +
+      " final_score Double)")
   }
   )
 
@@ -99,15 +104,6 @@ class DataPreprocessingNew {
       .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
       .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
       .option("dbtable", "roothotel_info")
-      .option("user", "FiveF1")
-      .option("password", "z3hE3TkjFzNyXhjb6iek")
-      .load()
-
-    val hotel_info = spark.read
-      .format("jdbc")
-      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
-      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
-      .option("dbtable", "hotel_info")
       .option("user", "FiveF1")
       .option("password", "z3hE3TkjFzNyXhjb6iek")
       .load()
@@ -345,7 +341,9 @@ class DataPreprocessingNew {
       col("review_id").cast("Int"),
       col("domain_id").cast("Int"),
       col("domain_hotel_id").cast("BigInt"),
+      col("username").cast("String"),
       col("review_datetime").cast("Date"),
+      col("text").cast("String"),
       col("score").cast("Float")
     )
 
@@ -387,7 +385,7 @@ class DataPreprocessingNew {
     val hotel_mapping_location_distance = hotel_distance_to_location
       .join(hotel_location_clean,Seq("location_id","domain_id"),"inner")
       .select(
-        col("id").cast("String"),
+        col("id").cast("String").as("table_id"),
         col("domain_id"),
         col("hotel_id"),
         col("name").cast("String").as("location_name"),

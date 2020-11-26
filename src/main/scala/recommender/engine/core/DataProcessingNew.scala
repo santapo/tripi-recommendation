@@ -69,6 +69,20 @@ class DataProcessingNew {
       .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
       .load()
 
+    val hotel_location = spark.read
+      .format("org.apache.spark.sql.cassandra")
+      .options(Map("table" -> "hotel_location", "keyspace" -> "testkeyspace"))
+      .load()
+
+    val hotel_image = spark.read
+      .format("jdbc")
+      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+      .option("dbtable", "hotel_image")
+      .option("user", "FiveF1")
+      .option("password", "z3hE3TkjFzNyXhjb6iek")
+      .load()
+
     // Mapping_root => Mapping_root_group_id (contain available hotel_domain)
     val mapping_root = cosine_similar
       .join(hotel_mapping,Seq("domain_id","domain_hotel_id"),"inner")
@@ -113,7 +127,7 @@ class DataProcessingNew {
       col("description"),
       col("avg_price"),
       col("map_long").as("longitude"),
-      col("latitude").as("latitude"),
+      col("map_lat").as("latitude"),
       col("suggest")
     )
 
@@ -144,10 +158,7 @@ class DataProcessingNew {
       max(col("cleanliness_score")).as("cleanliness_score"),
       max(col("meal_score")).as("meal_score"),
       max(col("location_score")).as("location_score"),
-      max(col("sleep_quality_score")).as("sleep_quality_score"),
-      max(col("room_score")).as("room_score"),
       max(col("service_score")).as("service_score"),
-      max(col("facility_score")).as("facility_score"),
       max(col("currency_exchange")).as("currency_exchange"),
       max(col("room_service_24_hour")).as("room_service_24_hour"),
       max(col("elevator")).as("elevator"),
@@ -176,7 +187,14 @@ class DataProcessingNew {
       .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace"))
       .save()
 
-    // Mapping_review
+    // Mapping_location
+    // val mapping_root_location = mapping_domain_hotel
+    //  .join(hotel_location,Seq("hotel_id","domain_id"),"inner")
+
+
+
+
+    // Mapping_review => add review count, image_list, review_list to mapping root final
     val mapping_hotel_review = hotel_review
       .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
 
@@ -184,15 +202,48 @@ class DataProcessingNew {
       col("table_review_id"),
       col("domain_id"),
       col("domain_hotel_id"),
+      col("username"),
+      col("text"),
       col("id"),
       col("review_datetime"),
       col("score")
     )
 
-    val mapping_review_count = mapping_hotel_review_clean.groupBy("id").count()
+    mapping_hotel_review_clean.createCassandraTable("testkeyspace","mapping_review")
+    mapping_hotel_review_clean
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "mapping_review", "keyspace" -> "testkeyspace"))
+      .save()
+
+    // Review count and review list
+
+    val mapping_review_list = mapping_hotel_review_clean
+      .withColumn("review_list",
+        mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
+
+    val mapping_review_count = mapping_hotel_review_clean
+      .groupBy("id").agg(
+      count(lit(1)).as("review_count"),
+      collect_list(col("review_list")).as("review_list")
+    )
 
     val mapping_root_clean_with_review_count = mapping_root_clean
       .join(mapping_review_count,Seq("id"),"inner")
+
+    // Image list
+
+    val mapping_image = hotel_image
+      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
+
+    val mapping_image_list = mapping_image
+      .groupBy("id").agg(
+      collect_list(col("provider_url")).as("image_list")
+    )
+
+    val mapping_root_review_image = mapping_root_clean_with_review_count
+      .join(mapping_image_list,Seq("id"),"left")
 
     val mapping_root_final = mapping_root_clean_with_review_count.select(
       col("id"),
@@ -207,8 +258,10 @@ class DataProcessingNew {
       col("avg_price"),
       col("longitude"),
       col("latitude"),
-      col("count").as("review_count"),
-      col("suggest")
+      col("review_count"),
+      col("suggest"),
+      col("review_list"),
+      col("image_list")
     )
 
     mapping_root_final
@@ -218,13 +271,6 @@ class DataProcessingNew {
       .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace"))
       .save()
 
-    mapping_hotel_review_clean.createCassandraTable("testkeyspace","mapping_review")
-    mapping_hotel_review_clean
-      .write
-      .format("org.apache.spark.sql.cassandra")
-      .mode("Append")
-      .options(Map("table" -> "mapping_review", "keyspace" -> "testkeyspace"))
-      .save()
 
     // Mapping_logging
     val mapping_hotel_logging = hotel_logging
@@ -413,11 +459,32 @@ class DataProcessingNew {
       .select(
         col("id"),
         col("hotel_cluster"),
-        col("Final_Score")
+        col("final_score")
       )
 
     val hotel_table = mapping_root
       .join(score,Seq("id"),"inner")
+
+    val hotel_table_clean = hotel_table.select(
+      col("id"),
+      col("hotel_cluster"),
+      col("name"),
+      col("address"),
+      col("logo"),
+      col("star_number"),
+      col("checkin_time"),
+      col("checkout_time"),
+      col("overall_score"),
+      col("description"),
+      col("avg_price"),
+      col("longitude"),
+      col("latitude"),
+      col("review_count"),
+      col("suggest"),
+      col("review_list"),
+      col("image_list"),
+      col("final_score")
+    )
 
     hotel_table
       .write
