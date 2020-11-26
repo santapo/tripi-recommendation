@@ -1,14 +1,14 @@
 package recommender.engine
 
-import recommender.engine.core.{DataPreprocessing, DataPreprocessingNew, DataProcessingNew}
+import recommender.engine.core.{DataPreprocessingNew, DataProcessingNew}
 import recommender.engine.restserving.AkkaServer
 
 object Main {
   def main(args: Array[String]): Unit = {
 
-    val getdata = new DataProcessingNew
+    val getdata = new DataPreprocessingNew
 
-    getdata.dataClustering()
+    getdata.dataToCassandra()
 
 //    val data = new DataPreprocessingNew
 //
