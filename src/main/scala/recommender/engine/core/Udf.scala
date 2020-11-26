@@ -151,6 +151,16 @@ object Udf {
     mapPrice
   }
 
+  val mapReview = (username: String,domain_id: String,text: String, score: String, review_datetime: String) =>{
+    val name = if(username != null) username else ""
+    val domain = if(domain_id != null) domain_id else ""
+    val review = if(text != null) text else ""
+    val overall_score = if(score != null) score else ""
+    val date = if(review_datetime != null) review_datetime else ""
+    val mapUser = Map("user"->name,"domain"->domain,"review"->review,"overall_score"->overall_score,"date"->date)
+    mapUser
+  }
+
   val mapLongitude = (longitude: Float, longitude_mapping: Float) =>{
     val mapLongitude = if((longitude<102) && (longitude>115)) longitude_mapping else longitude
     mapLongitude
@@ -177,6 +187,8 @@ object Udf {
   val convertPriceUdf = udf(convertPrice)
 
   val mapProviderUdf = udf(mapProvider)
+
+  val mapReviewUdf = udf(mapReview)
 
   val getProvinceFirstOrderUdf = udf(getProvinceFirstOrder)
 
