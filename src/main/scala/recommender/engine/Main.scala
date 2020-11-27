@@ -10,6 +10,12 @@ object Main {
 
     getdata.dataToCassandra()
 
+
+//    val data = new DataProcessingNew
+//
+//    data.dataClustering()
+//    data.dataRankScore()
+
 //    val data = new DataPreprocessingNew
 //
 //    data.dataToCassandra()
@@ -17,8 +23,8 @@ object Main {
 //    val data = new DataPreprocessing
 //    data.dataFiltering()
 //
-//    val server = new AkkaServer
-//    server.start()
+    val server = new AkkaServer
+    server.start()
 
   }
 }

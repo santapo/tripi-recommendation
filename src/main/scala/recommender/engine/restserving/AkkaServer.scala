@@ -39,8 +39,8 @@ class AkkaServer {
     )
 
     // Binding to the host and port
-    val bindingFuture = Http().bindAndHandle(route, "localhost", 3800)
-    println(Calendar.getInstance().getTime + s": Server online at http://localhost:3800/\nPress Enter to stop...\n")
+    val bindingFuture = Http().bindAndHandle(route, "0.0.0.0", 3800)
+    println(Calendar.getInstance().getTime + s": Server online at http://13.212.124.210:3800\nPress Enter to stop...\n")
     StdIn.readLine() // let the server run until user presses Enter
 
     bindingFuture
