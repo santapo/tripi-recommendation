@@ -15,7 +15,7 @@ class DataPreprocessingNew {
     .config("spark.sql.autoBroadcastJoinThreshold","-1")
     .config("spark.cassandra.connection.host", "localhost")
     .master("local[*]")
-    .appName("phoenix-tripi-dataprocessing")
+    .appName("tripi/5f1-Data Preprocessing")
     .getOrCreate()
 
   import spark.implicits._
@@ -43,9 +43,7 @@ class DataPreprocessingNew {
       " longitude float," +
       " latitude float," +
       " review_count int," +
-      " suggest list<frozen <map<text,text>>>," +
-      " review_list list<frozen <map<text,text>>>," +
-      " image_list list<text>)")
+      " suggest list<frozen <map<text,text>>>)")
 
     session.execute("CREATE TABLE testkeyspace.hotel_table " +
       "(id text PRIMARY KEY," +
@@ -63,8 +61,6 @@ class DataPreprocessingNew {
       " latitude float," +
       " review_count int," +
       " suggest list<frozen <map<text,text>>>," +
-      " review_list list<frozen <map<text,text>>>," +
-      " image_list list<text>," +
       " final_score Double)")
   }
   )
@@ -335,15 +331,14 @@ class DataPreprocessingNew {
       .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
       .save()
 
+
     // clean review and logging
     val hotel_review_clean = hotel_review.select(
       col("id").cast("String").as("table_review_id"),
       col("review_id").cast("Int"),
       col("domain_id").cast("Int"),
       col("domain_hotel_id").cast("BigInt"),
-      col("username").cast("String"),
       col("review_datetime").cast("Date"),
-      col("text").cast("String"),
       col("score").cast("Float")
     )
 
@@ -376,32 +371,32 @@ class DataPreprocessingNew {
       .save()
 
     // Clean hotel location
-    val hotel_location_clean = hotel_location.select(
-      col("id").cast("String").as("location_id"),
-      col("domain_id").cast("Int"),
-      col("hotel_id").cast("String")
-    )
-
-    val hotel_mapping_location_distance = hotel_distance_to_location
-      .join(hotel_location_clean,Seq("location_id","domain_id"),"inner")
-      .select(
-        col("id").cast("String").as("table_id"),
-        col("domain_id"),
-        col("hotel_id"),
-        col("name").cast("String").as("location_name"),
-        col("distance").cast("Float"),
-        col("distance_unit").cast("String"),
-        col("duration").cast("Int"),
-        col("category").cast("String")
-      )
-
-    hotel_mapping_location_distance.createCassandraTable("testkeyspace", "hotel_location")
-    hotel_mapping_location_distance
-      .write
-      .format("org.apache.spark.sql.cassandra")
-      .mode("Append")
-      .options(Map("table" -> "hotel_location", "keyspace" -> "testkeyspace"))
-      .save()
+//    val hotel_location_clean = hotel_location.select(
+//      col("id").cast("String").as("location_id"),
+//      col("domain_id").cast("Int"),
+//      col("hotel_id").cast("String")
+//    )
+//
+//    val hotel_mapping_location_distance = hotel_distance_to_location
+//      .join(hotel_location_clean,Seq("location_id","domain_id"),"inner")
+//      .select(
+//        col("id").cast("String").as("table_id"),
+//        col("domain_id"),
+//        col("hotel_id"),
+//        col("name").cast("String").as("location_name"),
+//        col("distance").cast("Float"),
+//        col("distance_unit").cast("String"),
+//        col("duration").cast("Int"),
+//        col("category").cast("String")
+//      )
+//
+//    hotel_mapping_location_distance.createCassandraTable("testkeyspace", "hotel_location")
+//    hotel_mapping_location_distance
+//      .write
+//      .format("org.apache.spark.sql.cassandra")
+//      .mode("Append")
+//      .options(Map("table" -> "hotel_location", "keyspace" -> "testkeyspace"))
+//      .save()
 
     Thread.sleep(120000)
 
@@ -431,23 +426,10 @@ class DataPreprocessingNew {
 
     println(Calendar.getInstance().getTime + ": Data is Saved\n")
 
+
+
     dataProcess.dataMapping()
-  }
-
-
-}
-
-
-
-case object dataToCassandra
-
-class dataPreprocessingNewActor(DataPreprocessingNew: DataPreprocessingNew) extends Actor{
-
-  // Implement receive mehtod
-  def  receive = {
-    case dataToCassandra => {
-      println(Calendar.getInstance().getTime + ": Data is Saving to Cassandra... \n")
-      DataPreprocessingNew.dataToCassandra()
-    }
+    dataProcess.dataClustering()
+    dataProcess.dataRankScore()
   }
 }

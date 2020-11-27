@@ -8,6 +8,7 @@ import org.apache.spark.sql.functions._
 import Udf._
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.sql.Column
 
 import scala.math.E
 
@@ -19,7 +20,7 @@ class DataProcessingNew {
     .config("spark.sql.autoBroadcastJoinThreshold","-1")
     .config("spark.cassandra.connection.host", "localhost")
     .master("local[*]")
-    .appName("phoenix-tripi-dataprocessing")
+    .appName("tripi/5f1-Data Processing")
     .getOrCreate()
 
   import spark.implicits._
@@ -69,19 +70,19 @@ class DataProcessingNew {
       .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
       .load()
 
-    val hotel_location = spark.read
-      .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_location", "keyspace" -> "testkeyspace"))
-      .load()
+//    val hotel_location = spark.read
+//      .format("org.apache.spark.sql.cassandra")
+//      .options(Map("table" -> "hotel_location", "keyspace" -> "testkeyspace"))
+//      .load()
 
-    val hotel_image = spark.read
-      .format("jdbc")
-      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
-      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
-      .option("dbtable", "hotel_image")
-      .option("user", "FiveF1")
-      .option("password", "z3hE3TkjFzNyXhjb6iek")
-      .load()
+//    val hotel_image = spark.read
+//      .format("jdbc")
+//      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+//      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+//      .option("dbtable", "hotel_image")
+//      .option("user", "FiveF1")
+//      .option("password", "z3hE3TkjFzNyXhjb6iek")
+//      .load()
 
     // Mapping_root => Mapping_root_group_id (contain available hotel_domain)
     val mapping_root = cosine_similar
@@ -140,6 +141,14 @@ class DataProcessingNew {
       col("domain_id"),
       col("domain_hotel_id")
     )
+
+    mapping_domain_hotel.createCassandraTable("testkeyspace","mapping_domain_hotel")
+    mapping_domain_hotel
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace"))
+      .save()
 
     // Mapping_service
     val mapping_root_service = mapping_domain_hotel
@@ -202,8 +211,6 @@ class DataProcessingNew {
       col("table_review_id"),
       col("domain_id"),
       col("domain_hotel_id"),
-      col("username"),
-      col("text"),
       col("id"),
       col("review_datetime"),
       col("score")
@@ -219,33 +226,79 @@ class DataProcessingNew {
 
     // Review count and review list
 
-    val mapping_review_list = mapping_hotel_review_clean
-      .withColumn("review_list",
-        mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
+//    val hotel_review_with_text = spark.read
+//      .format("jdbc")
+//      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+//      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+//      .option("dbtable", "hotel_review")
+//      .option("user", "FiveF1")
+//      .option("password", "z3hE3TkjFzNyXhjb6iek")
+//      .load()
+//
+//    val hotel_review_text = hotel_review_with_text.select(
+//      col("id").cast("String").as("table_review_id"),
+//      col("review_id").cast("Int"),
+//      col("domain_id").cast("Int"),
+//      col("domain_hotel_id").cast("BigInt"),
+//      col("username").cast("String"),
+//      col("text").cast("String"),
+//      col("review_datetime").cast("Date"),
+//      col("score").cast("Float")
+//    )
+//
+//    val mapping_review_text = hotel_review_text
+//      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
+//
+//    def limitSize(n: Int, arrCol: Column): Column =
+//      array((0 until n).map(arrCol.getItem):_*)
+//
+//    val mapping_review_count_word = mapping_review_text
+//      .withColumn("word_count",size(split(col("text")," ")))
+//      .filter(col("word_count")>20)
+//
+//    val review_list = mapping_review_count_word
+//      .withColumn("review_list",
+//        mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
+//
+//    val review_list_clean = review_list
+//      .groupBy("id").agg(
+//      collect_list(col("review_list")).as("review_list")
+//    ).select(
+//      col("id"),
+//      limitSize(3,col("review_list")).as("review_list")
+//    )
+//    val mapping_review_list = mapping_hotel_review_clean
+//      .withColumn("review_list",
+//        mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
 
-    val mapping_review_count = mapping_hotel_review_clean
-      .groupBy("id").agg(
-      count(lit(1)).as("review_count"),
-      collect_list(col("review_list")).as("review_list")
-    )
+//    val mapping_review_count = mapping_hotel_review_clean
+//      .groupBy("id").agg(
+//      count(lit(1)).as("review_count"),
+//      collect_list(col("review_list")).as("review_list")
+//    )
+
+    val mapping_review_count = mapping_hotel_review_clean.groupBy("id").count()
 
     val mapping_root_clean_with_review_count = mapping_root_clean
       .join(mapping_review_count,Seq("id"),"inner")
 
+
     // Image list
 
-    val mapping_image = hotel_image
-      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
-
-    val mapping_image_list = mapping_image
-      .groupBy("id").agg(
-      collect_list(col("provider_url")).as("image_list")
-    )
+//    val mapping_image = hotel_image
+//      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
+//
+//    val mapping_image_list = mapping_image
+//      .groupBy("id").agg(
+//      collect_list(col("provider_url")).as("image_list")
+//    ).select(
+//      col("id"),
+//      limitSize(10,col("image_list")).as("image_list")
+//    )
 
     val mapping_root_review_image = mapping_root_clean_with_review_count
-      .join(mapping_image_list,Seq("id"),"left")
 
-    val mapping_root_final = mapping_root_clean_with_review_count.select(
+    val mapping_root_final = mapping_root_review_image.select(
       col("id"),
       col("name"),
       col("address"),
@@ -258,10 +311,8 @@ class DataProcessingNew {
       col("avg_price"),
       col("longitude"),
       col("latitude"),
-      col("review_count"),
-      col("suggest"),
-      col("review_list"),
-      col("image_list")
+      col("count").as("review_count"),
+      col("suggest")
     )
 
     mapping_root_final
@@ -294,11 +345,11 @@ class DataProcessingNew {
       .options(Map("table" -> "mapping_logging", "keyspace" -> "testkeyspace"))
       .save()
 
-    print(Calendar.getInstance().getTime + ": Mapping process is success\n")
+    println(Calendar.getInstance().getTime + ": Mapping process is success\n")
   }
 
   def dataClustering(): Unit = {
-    print(Calendar.getInstance().getTime + ": Clustering with Kmeans\n")
+    println(Calendar.getInstance().getTime + ": Clustering with Kmeans\n")
 
     //
     // Read data from Cassandra
@@ -431,11 +482,11 @@ class DataProcessingNew {
       .options(Map("table" -> "service_price_score", "keyspace" -> "testkeyspace"))
       .save()
 
-    print(Calendar.getInstance().getTime + ": Clustering is Success\n")
+    println(Calendar.getInstance().getTime + ": Clustering is Success\n")
   }
 
   def dataRankScore(): Unit = {
-    print(Calendar.getInstance().getTime + ": Ranking...\n")
+    println(Calendar.getInstance().getTime + ": Ranking...\n")
     //
     // Read data from Cassandra
     //
@@ -481,8 +532,6 @@ class DataProcessingNew {
       col("latitude"),
       col("review_count"),
       col("suggest"),
-      col("review_list"),
-      col("image_list"),
       col("final_score")
     )
 
@@ -493,7 +542,7 @@ class DataProcessingNew {
       .options(Map("table" -> "hotel_table", "keyspace" -> "testkeyspace"))
       .save()
 
-    print(Calendar.getInstance().getTime + ": Ranking is Completed!\n")
+    println(Calendar.getInstance().getTime + ": Ranking is Completed!\n")
   }
 
 }
