@@ -9,6 +9,7 @@ import Udf._
 import org.apache.spark.ml.clustering.KMeans
 import org.apache.spark.ml.feature.VectorAssembler
 import org.apache.spark.sql.Column
+import org.apache.spark.sql.expressions.Window
 
 import scala.math.E
 
@@ -96,6 +97,9 @@ class DataProcessingNew {
       .groupBy("id").agg(
       first(col("name")).as("name"),
       first(col("address")).as("address"),
+      first(col("province_name")).as("province_name"),
+      first(col("district_name")).as("district_name"),
+      first(col("street_name")).as("street_name"),
       first(col("logo")).as("logo"),
       first(col("star_number")).as("star_number"),
       first(col("checkin_time")).as("checkin_time"),
@@ -120,6 +124,9 @@ class DataProcessingNew {
       col("id"),
       col("name"),
       col("address"),
+      col("province_name"),
+      col("district_name"),
+      col("street_name"),
       col("logo"),
       col("star_number"),
       col("checkin_time"),
@@ -157,7 +164,7 @@ class DataProcessingNew {
 
     val mapping_service = mapping_root_service
       .groupBy("id").agg(
-      max(col("tours")).as("tour"),
+      max(col("tours")).as("tours"),
       max(col("night_club")).as("night_club"),
       max(col("relax_spa")).as("relax_spa"),
       max(col("relax_massage")).as("relax_massage"),
@@ -296,6 +303,16 @@ class DataProcessingNew {
     val mapping_image = hotel_image
       .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
 
+    val incrementbyOne = Window.partitionBy(lit("C")).orderBy(lit("C").asc)
+
+    mapping_image.withColumn("key", row_number().over(incrementbyOne))
+      .select(
+        col("key"),
+        col("id"),
+        col("domain_id"),
+        col("domain_hotel_id"),
+        col("provider_url")
+      )
 //    val mapping_image_list = mapping_image
 //      .groupBy("id").agg(
 //      collect_list(col("provider_url")).as("image_list")
@@ -317,6 +334,9 @@ class DataProcessingNew {
       col("id"),
       col("name"),
       col("address"),
+      col("province_name"),
+      col("district_name"),
+      col("street_name"),
       col("logo"),
       col("star_number"),
       col("checkin_time"),
@@ -401,7 +421,7 @@ class DataProcessingNew {
     val featureDf = assembler.transform(geolocation)
 
     val kmeans = new KMeans()
-      .setK(100)
+      .setK(70)
       .setFeaturesCol("features")
       .setPredictionCol("hotel_cluster")
 
@@ -542,6 +562,9 @@ class DataProcessingNew {
       col("hotel_cluster"),
       col("name"),
       col("address"),
+      col("province_name"),
+      col("district_name"),
+      col("street_name"),
       col("logo"),
       col("star_number"),
       col("checkin_time"),

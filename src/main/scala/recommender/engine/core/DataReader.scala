@@ -66,21 +66,24 @@ object DataReader {
   class readData(val hotel_table:Dataset[Row]){
 
     def search (page:Int,key:String) : readData = {
-//      val patternD = new Regex("đ|ð")
-//      var newkey = patternD.replaceAllIn(key, "d")
-//      newkey = stripAccents(newkey)
-//
-//      newkey = newkey.toLowerCase().trim
-      val hotel_data = this.hotel_table
-        .filter(col("address").contains(key))
+      val patternD = new Regex("đ|ð")
+      var newkey = patternD.replaceAllIn(key, "d")
+      newkey = stripAccents(newkey)
 
-      val count_cluster = hotel_data.groupBy("hotel_cluster").count()
+      newkey = newkey.toLowerCase().trim
 
-      val get_cluster = count_cluster.orderBy(desc("count")).limit(1)
+      val hotel_data_1 = this.hotel_table
+        .filter(col("province_name").contains(newkey))
 
-      val hotel_in_cluster = this.hotel_table
-        .join(get_cluster,Seq("hotel_cluster"),"inner")
-      val hotel_rank = hotel_in_cluster.orderBy(col("final_score").desc)
+      val hotel_data_2 = this.hotel_table
+        .filter(col("district_name").contains(newkey))
+
+      val hotel_data_3 = this.hotel_table
+        .filter(col("street_name").contains(newkey))
+
+      val hotel_data = hotel_data_1.union(hotel_data_2).union(hotel_data_3)
+
+      val hotel_rank = hotel_data.orderBy(col("final_score").desc)
       val data = hotel_rank.limit(page*5)
 
       val get_hotel_id = data.select(
@@ -105,7 +108,7 @@ object DataReader {
         .load()
 
       val mapping_image = mapping_image_1
-        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
+        .join(mapping_id,Seq("domain_id","domain_hotel_id","id"),"inner")
 
       val mapping_image_list = mapping_image
         .groupBy("id").agg(
@@ -240,7 +243,6 @@ object DataReader {
       org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)
 
       val data = this.hotel_table
-        .na.drop()
         .as[hotel](schema)
         .collectAsList
         .toList

@@ -7,6 +7,7 @@ import Udf._
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.sql.functions._
 import com.datastax.spark.connector._
+import org.apache.commons.lang3.StringUtils.stripAccents
 
 class DataPreprocessingNew {
   val spark = org.apache.spark.sql.SparkSession
@@ -33,6 +34,9 @@ class DataPreprocessingNew {
       "(id text PRIMARY KEY," +
       " name text," +
       " address text," +
+      " province_name text," +
+      " district_name text," +
+      " street_name text," +
       " logo text," +
       " star_number int," +
       " checkin_time text," +
@@ -50,6 +54,9 @@ class DataPreprocessingNew {
       " hotel_cluster int," +
       " name text," +
       " address text," +
+      " province_name text," +
+      " district_name text," +
+      " street_name text," +
       " logo text," +
       " star_number int," +
       " checkin_time text," +
@@ -168,38 +175,56 @@ class DataPreprocessingNew {
       .option("password", "z3hE3TkjFzNyXhjb6iek")
       .load()
 
-    val hotel_location = spark.read
-      .format("jdbc")
-      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
-      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
-      .option("dbtable", "hotel_location")
-      .option("user", "FiveF1")
-      .option("password", "z3hE3TkjFzNyXhjb6iek")
-      .load()
+//    val hotel_location = spark.read
+//      .format("jdbc")
+//      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+//      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+//      .option("dbtable", "hotel_location")
+//      .option("user", "FiveF1")
+//      .option("password", "z3hE3TkjFzNyXhjb6iek")
+//      .load()
+//
+//    val hotel_distance_to_location = spark.read
+//      .format("jdbc")
+//      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+//      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+//      .option("dbtable", "hotel_distance_to_location")
+//      .option("user", "FiveF1")
+//      .option("password", "z3hE3TkjFzNyXhjb6iek")
+//      .load()
 
-    val hotel_distance_to_location = spark.read
-      .format("jdbc")
-      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
-      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
-      .option("dbtable", "hotel_distance_to_location")
-      .option("user", "FiveF1")
-      .option("password", "z3hE3TkjFzNyXhjb6iek")
-      .load()
-
-    val domain = spark.read
-      .format("jdbc")
-      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
-      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
-      .option("dbtable", "domain")
-      .option("user", "FiveF1")
-      .option("password", "z3hE3TkjFzNyXhjb6iek")
-      .load()
+//    val domain = spark.read
+//      .format("jdbc")
+//      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+//      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+//      .option("dbtable", "domain")
+//      .option("user", "FiveF1")
+//      .option("password", "z3hE3TkjFzNyXhjb6iek")
+//      .load()
 
     val province = spark.read
       .format("jdbc")
       .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
       .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
       .option("dbtable", "province")
+      .option("user", "FiveF1")
+      .option("password", "z3hE3TkjFzNyXhjb6iek")
+      .load()
+
+    val district = spark.read
+      .format("jdbc")
+      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+      .option("dbtable", "district")
+      .option("user", "FiveF1")
+      .option("password", "z3hE3TkjFzNyXhjb6iek")
+      .load()
+
+    val street = spark.read
+      .format("jdbc")
+      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+      .option("dbtable", "street")
       .option("user", "FiveF1")
       .option("password", "z3hE3TkjFzNyXhjb6iek")
       .load()
@@ -318,6 +343,7 @@ class DataPreprocessingNew {
       .options(Map("table" -> "hotel_service", "keyspace" -> "testkeyspace"))
       .save()
 
+
     // Clean root_hotel table
     val roothotel_info_clean = roothotel_info.select(
       col("id").cast("Int"),
@@ -330,10 +356,57 @@ class DataPreprocessingNew {
       col("checkin_time").cast("String"),
       col("checkout_time").cast("String"),
       col("overall_score").cast("Float"),
-      col("description").cast("String"))
+      col("description").cast("String"),
+      col("province_id").cast("Int"),
+      col("district_id").cast("Int"),
+      col("street_id").cast("Int"))
 
-    roothotel_info_clean.createCassandraTable("testkeyspace", "root_hotel")
-    roothotel_info_clean
+    // Province, Street, District table
+
+    val province_clean = province.select(
+      col("id").cast("Int").as("province_id"),
+      col("name_no_accent").cast("String").as("province_name")
+    )
+
+    val district_clean = district.select(
+      col("id").cast("Int").as("district_id"),
+      col("province_id").cast("Int"),
+      col("name_no_accent").cast("String").as("district_name")
+    )
+
+    val stringNormalizer = udf((s: String) => stripAccents(s))
+    val street_clean = street.withColumn("name_no_accent",stringNormalizer(lower(col("name"))))
+      .select(
+        col("id").cast("Int").as("street_id"),
+        col("district_id").cast("Int"),
+        col("province_id").cast("Int"),
+        col("name_no_accent").cast("String").as("street_name")
+      )
+
+    val roothotel_final = roothotel_info_clean
+      .join(province_clean,Seq("province_id"),"inner")
+      .join(district_clean,Seq("district_id","province_id"),"left")
+      .join(street_clean,Seq("province_id","district_id","street_id"),"left")
+
+    val roothotel_final_clean = roothotel_final.select(
+      col("id").cast("Int"),
+      col("name").cast("String"),
+      col("address").cast("String"),
+      col("logo").cast("String"),
+      col("longitude").cast("Float"),
+      col("latitude").cast("Float"),
+      col("star_number").cast("Int"),
+      col("checkin_time").cast("String"),
+      col("checkout_time").cast("String"),
+      col("overall_score").cast("Float"),
+      col("description").cast("String"),
+      col("province_name").cast("String"),
+      col("district_name").cast("String"),
+      col("street_name").cast("String")
+    )
+
+    roothotel_final_clean.createCassandraTable("testkeyspace", "root_hotel")
+    roothotel_final_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
