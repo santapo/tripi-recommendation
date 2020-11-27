@@ -86,7 +86,7 @@ object DataReader {
       // Add review_list and image_list
       //
 
-//      val hotel_review_with_text = spark.read
+//      val mapping_review_text = spark.read
 //        .format("jdbc")
 //        .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
 //        .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
@@ -105,28 +105,33 @@ object DataReader {
 //        col("review_datetime").cast("Date"),
 //        col("score").cast("Float")
 //      )
-//
-//      val review_data = hotel_review_text
-//        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
-//
-//      def limitSize(n: Int, arrCol: Column): Column =
-//        array((0 until n).map(arrCol.getItem):_*)
-//
-//      val mapping_review_count_word = review_data
-//        .withColumn("word_count", size(split(col("text")," ")))
-//        .filter(col("word_count")>20)
-//
-//      val review_list = mapping_review_count_word
-//        .withColumn("review_list",
-//          mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
-//
-//      val review_list_clean = review_list
-//        .groupBy("id").agg(
-//        collect_list(col("review_list")).as("review_list")
-//      ).select(
-//        col("id"),
-//        limitSize(3,col("review_list")).as("review_list")
-//      )
+
+      val mapping_review_text = spark.read
+        .format("org.apache.spark.sql.cassandra")
+        .options(Map("table" -> "mapping_review_text", "keyspace" -> "testkeyspace"))
+        .load()
+
+      val review_data = mapping_review_text
+        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
+
+      def limitSize(n: Int, arrCol: Column): Column =
+        array((0 until n).map(arrCol.getItem):_*)
+
+      val mapping_review_count_word = review_data
+        .withColumn("word_count", size(split(col("text")," ")))
+        .filter(col("word_count")>20)
+
+      val review_list = mapping_review_count_word
+        .withColumn("review_list",
+          mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
+
+      val review_list_clean = review_list
+        .groupBy("id").agg(
+        collect_list(col("review_list")).as("review_list")
+      ).select(
+        col("id"),
+        limitSize(3,col("review_list")).as("review_list")
+      )
 
 //      val hotel_image = spark.read
 //        .format("jdbc")
@@ -136,31 +141,36 @@ object DataReader {
 //        .option("user", "FiveF1")
 //        .option("password", "z3hE3TkjFzNyXhjb6iek")
 //        .load()
-//
-//      val mapping_image = hotel_image
-//        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
-//
-//      val mapping_image_list = mapping_image
-//        .groupBy("id").agg(
-//        collect_list(col("provider_url")).as("image_list")
-//      ).select(
-//        col("id"),
-//        limitSize(10,col("image_list")).as("image_list")
-//      )
 
-      val mapping_image_list = spark.read
+      val mapping_image_1 = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_image_list", "keyspace" -> "testkeyspace"))
+        .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace"))
         .load()
 
-      val mapping_review_list = spark.read
-        .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_review_list", "keyspace" -> "testkeyspace"))
-        .load()
+      val mapping_image = mapping_image_1
+        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
+
+      val mapping_image_list = mapping_image
+        .groupBy("id").agg(
+        collect_list(col("provider_url")).as("image_list")
+      ).select(
+        col("id"),
+        limitSize(10,col("image_list")).as("image_list")
+      )
+
+//      val mapping_image_list = spark.read
+//        .format("org.apache.spark.sql.cassandra")
+//        .options(Map("table" -> "mapping_image_list", "keyspace" -> "testkeyspace"))
+//        .load()
+//
+//      val mapping_review_list = spark.read
+//        .format("org.apache.spark.sql.cassandra")
+//        .options(Map("table" -> "mapping_review_list", "keyspace" -> "testkeyspace"))
+//        .load()
 
       val data_final = data
         .join(mapping_image_list,Seq("id"),"left")
-        .join(mapping_review_list,Seq("id"),"left")
+        .join(review_list_clean,Seq("id"),"left")
 
       val data_final_clean = data_final.select(
         col("id"),
