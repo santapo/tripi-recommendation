@@ -267,7 +267,7 @@ class DataProcessingNew {
 //      col("id"),
 //      limitSize(3,col("review_list")).as("review_list")
 //    )
-
+    mapping_review_text.createCassandraTable("testkeyspace","mapping_review_text")
     mapping_review_text
       .write
       .format("org.apache.spark.sql.cassandra")
@@ -302,7 +302,7 @@ class DataProcessingNew {
 //      col("id"),
 //      limitSize(10,col("image_list")).as("image_list")
 //    )
-
+    mapping_image.createCassandraTable("testkeyspace","mapping_image")
     mapping_image
       .write
       .format("org.apache.spark.sql.cassandra")
@@ -498,6 +498,8 @@ class DataProcessingNew {
 
     println(Calendar.getInstance().getTime + ": Clustering is Success\n")
   }
+
+
 
   def dataRankScore(): Unit = {
     println(Calendar.getInstance().getTime + ": Ranking...\n")
