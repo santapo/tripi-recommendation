@@ -62,6 +62,15 @@ class DataPreprocessingNew {
       " review_count int," +
       " suggest list<frozen <map<text,text>>>," +
       " final_score Double)")
+
+    session.execute("CREATE TABLE testkeyspace.mapping_review_list " +
+      "(id text PRIMARY KEY," +
+      " review_list list<frozen <map<text,text>>>)")
+
+    session.execute("CREATE TABLE testkeyspace.mapping_image_list " +
+      "(id text PRIMARY KEY," +
+      " image_list list<text>)")
+
   }
   )
 
