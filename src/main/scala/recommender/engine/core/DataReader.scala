@@ -47,7 +47,22 @@ object DataReader {
                    suggest: Array[Map[String,String]],
                    review_list: Array[Map[String,String]],
                    image_list: Array[String],
-                   final_score: Double)
+                   final_score: Double,
+                   cleanliness_score: Float,
+                   meal_score: Float,
+                   location_score: Float,
+                   service_score: Float,
+                   sleep_quality_score: Float,
+                   tours: Int,
+                   night_club: Int,
+                   relax_spa: Int,
+                   relax_sauna: Int,
+                   room_service_24_hour: Int,
+                   poolside_bar: Int,
+                   restaurants: Int,
+                   shops: Int,
+                   bar: Int
+                  )
 
   class readData(val hotel_table:Dataset[Row]){
 
@@ -167,10 +182,15 @@ object DataReader {
 //        .format("org.apache.spark.sql.cassandra")
 //        .options(Map("table" -> "mapping_review_list", "keyspace" -> "testkeyspace"))
 //        .load()
+      val mapping_service = spark.read
+        .format("org.apache.spark.sql.cassandra")
+        .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace"))
+        .load()
 
       val data_final = data
         .join(mapping_image_list,Seq("id"),"left")
         .join(review_list_clean,Seq("id"),"left")
+        .join(mapping_service,Seq("id"),"left")
 
       val data_final_clean = data_final.select(
         col("id"),
@@ -190,7 +210,21 @@ object DataReader {
         col("suggest"),
         col("review_list"),
         col("image_list"),
-        col("final_score")
+        col("final_score"),
+        col("cleanliness_score"),
+        col("meal_score"),
+        col("location_score"),
+        col("service_score"),
+        col("sleep_quality_score"),
+        col("tours"),
+        col("night_club"),
+        col("relax_spa"),
+        col("relax_sauna"),
+        col("room_service_24_hour"),
+        col("poolside_bar"),
+        col("restaurants"),
+        col("shops"),
+        col("bar")
       )
 
       val readdata = new readData(data_final_clean)
