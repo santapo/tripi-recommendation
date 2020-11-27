@@ -165,6 +165,7 @@ class DataProcessingNew {
       max(col("relax_outdoor_pool")).as("relax_outdoor_pool"),
       max(col("relax_sauna")).as("relax_sauna"),
       max(col("cleanliness_score")).as("cleanliness_score"),
+      max(col("sleep_quality_score")).as("sleep_quality_score"),
       max(col("meal_score")).as("meal_score"),
       max(col("location_score")).as("location_score"),
       max(col("service_score")).as("service_score"),
@@ -346,9 +347,12 @@ class DataProcessingNew {
       col("user_id"),
       col("action_name"),
       col("id"),
-      col("room_night"),
-      col("adult_num"),
-      col("rank_on_page")
+      col("rank_on_page"),
+      col("review_number"),
+      col("star_number"),
+      col("rating_level"),
+      col("overall_score"),
+      col("price")
     )
 
     mapping_hotel_logging_clean.createCassandraTable("testkeyspace","mapping_logging")

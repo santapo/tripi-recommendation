@@ -35,3 +35,13 @@ hotel_logging.groupBy("adult_num").count().show()
 hotel_logging.groupBy("id").count().show()
 
 hotel_logging.groupBy("rank_on_page").count().show()
+
+hotel_logging.groupBy("session_id").count().groupBy().count().show()
+
+hotel_logging.groupBy("session_id").count().show(1000,false)
+
+hotel_logging.groupBy("session_id").count()
+  .orderBy(col("count").asc)
+  .show(1000,false)
+
+hotel_logging.where(col("session_id")==="-2479622442145743418").show()
