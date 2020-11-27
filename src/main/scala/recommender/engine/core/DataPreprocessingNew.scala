@@ -365,10 +365,12 @@ class DataPreprocessingNew {
       col("session_id").cast("BigInt"),
       col("action_name").cast("String"),
       col("hotel_id").cast("Int").as("id"),
+      col("rank_on_page").cast("Int"),
       col("reviews_number").cast("Int"),
-      col("room_night").cast("Int"),
-      col("adult_num").cast("Int"),
-      col("rank_on_page").cast("Int")
+      col("star_number").cast("Int"),
+      col("rating_level").cast("Int"),
+      col("overall_score").cast("Float"),
+      col("price").cast("Int")
     )
 
     hotel_logging_clean.createCassandraTable("testkeyspace","hotel_logging")

@@ -45,7 +45,6 @@ object DataReader {
                    latitude: Float,
                    review_count: Int,
                    suggest: Array[Map[String,String]],
-                   review_list: Array[Map[String,String]],
                    image_list: Array[String],
                    final_score: Double,
                    cleanliness_score: Float,
@@ -97,6 +96,72 @@ object DataReader {
       val mapping_id = get_hotel_id
         .join(mapping_domain_hotel,Seq("id"),"inner")
 
+      def limitSize(n: Int, arrCol: Column): Column =
+        array((0 until n).map(arrCol.getItem):_*)
+
+      val mapping_image_1 = spark.read
+        .format("org.apache.spark.sql.cassandra")
+        .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace"))
+        .load()
+
+      val mapping_image = mapping_image_1
+        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
+
+      val mapping_image_list = mapping_image
+        .groupBy("id").agg(
+        collect_list(col("provider_url")).as("image_list")
+      ).select(
+        col("id"),
+        limitSize(10,col("image_list")).as("image_list")
+      )
+
+      val mapping_service = spark.read
+        .format("org.apache.spark.sql.cassandra")
+        .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace"))
+        .load()
+
+      val data_final = data
+        .join(mapping_image_list,Seq("id"),"left")
+        .join(mapping_service,Seq("id"),"left")
+
+      val data_final_clean = data_final.select(
+        col("id"),
+        col("hotel_cluster"),
+        col("name"),
+        col("address"),
+        col("logo"),
+        col("star_number"),
+        col("checkin_time"),
+        col("checkout_time"),
+        col("overall_score"),
+        col("description"),
+        col("avg_price"),
+        col("longitude"),
+        col("latitude"),
+        col("review_count"),
+        col("suggest"),
+        col("image_list"),
+        col("final_score"),
+        col("cleanliness_score"),
+        col("meal_score"),
+        col("location_score"),
+        col("service_score"),
+        col("sleep_quality_score"),
+        col("tours"),
+        col("night_club"),
+        col("relax_spa"),
+        col("relax_sauna"),
+        col("room_service_24_hour"),
+        col("poolside_bar"),
+        col("restaurants"),
+        col("shops"),
+        col("bar")
+      )
+
+      val readdata = new readData(data_final_clean)
+
+      readdata
+
       //
       // Add review_list and image_list
       //
@@ -121,32 +186,31 @@ object DataReader {
 //        col("score").cast("Float")
 //      )
 
-      val mapping_review_text = spark.read
-        .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_review_text", "keyspace" -> "testkeyspace"))
-        .load()
+//      val mapping_review_text = spark.read
+//        .format("org.apache.spark.sql.cassandra")
+//        .options(Map("table" -> "mapping_review_text", "keyspace" -> "testkeyspace"))
+//        .load()
+//
+//      val review_data = mapping_review_text
+//        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
+//
 
-      val review_data = mapping_review_text
-        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
-
-      def limitSize(n: Int, arrCol: Column): Column =
-        array((0 until n).map(arrCol.getItem):_*)
-
-      val mapping_review_count_word = review_data
-        .withColumn("word_count", size(split(col("text")," ")))
-        .filter(col("word_count")>20)
-
-      val review_list = mapping_review_count_word
-        .withColumn("review_list",
-          mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
-
-      val review_list_clean = review_list
-        .groupBy("id").agg(
-        collect_list(col("review_list")).as("review_list")
-      ).select(
-        col("id"),
-        limitSize(3,col("review_list")).as("review_list")
-      )
+//
+//      val mapping_review_count_word = review_data
+//        .withColumn("word_count", size(split(col("text")," ")))
+//        .filter(col("word_count")>20)
+//
+//      val review_list = mapping_review_count_word
+//        .withColumn("review_list",
+//          mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
+//
+//      val review_list_clean = review_list
+//        .groupBy("id").agg(
+//        collect_list(col("review_list")).as("review_list")
+//      ).select(
+//        col("id"),
+//        limitSize(3,col("review_list")).as("review_list")
+//      )
 
 //      val hotel_image = spark.read
 //        .format("jdbc")
@@ -157,21 +221,7 @@ object DataReader {
 //        .option("password", "z3hE3TkjFzNyXhjb6iek")
 //        .load()
 
-      val mapping_image_1 = spark.read
-        .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace"))
-        .load()
 
-      val mapping_image = mapping_image_1
-        .join(mapping_id,Seq("domain_id","domain_hotel_id"),"inner")
-
-      val mapping_image_list = mapping_image
-        .groupBy("id").agg(
-        collect_list(col("provider_url")).as("image_list")
-      ).select(
-        col("id"),
-        limitSize(10,col("image_list")).as("image_list")
-      )
 
 //      val mapping_image_list = spark.read
 //        .format("org.apache.spark.sql.cassandra")
@@ -182,54 +232,7 @@ object DataReader {
 //        .format("org.apache.spark.sql.cassandra")
 //        .options(Map("table" -> "mapping_review_list", "keyspace" -> "testkeyspace"))
 //        .load()
-      val mapping_service = spark.read
-        .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace"))
-        .load()
 
-      val data_final = data
-        .join(mapping_image_list,Seq("id"),"left")
-        .join(review_list_clean,Seq("id"),"left")
-        .join(mapping_service,Seq("id"),"left")
-
-      val data_final_clean = data_final.select(
-        col("id"),
-        col("hotel_cluster"),
-        col("name"),
-        col("address"),
-        col("logo"),
-        col("star_number"),
-        col("checkin_time"),
-        col("checkout_time"),
-        col("overall_score"),
-        col("description"),
-        col("avg_price"),
-        col("longitude"),
-        col("latitude"),
-        col("review_count"),
-        col("suggest"),
-        col("review_list"),
-        col("image_list"),
-        col("final_score"),
-        col("cleanliness_score"),
-        col("meal_score"),
-        col("location_score"),
-        col("service_score"),
-        col("sleep_quality_score"),
-        col("tours"),
-        col("night_club"),
-        col("relax_spa"),
-        col("relax_sauna"),
-        col("room_service_24_hour"),
-        col("poolside_bar"),
-        col("restaurants"),
-        col("shops"),
-        col("bar")
-      )
-
-      val readdata = new readData(data_final_clean)
-
-      readdata
     }
 
     def load(): String = {

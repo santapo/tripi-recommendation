@@ -226,29 +226,29 @@ class DataProcessingNew {
       .save()
 
     // Review count and review list
-
-    val hotel_review_with_text = spark.read
-      .format("jdbc")
-      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
-      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
-      .option("dbtable", "hotel_review")
-      .option("user", "FiveF1")
-      .option("password", "z3hE3TkjFzNyXhjb6iek")
-      .load()
-
-    val hotel_review_text = hotel_review_with_text.select(
-      col("id").cast("String").as("table_review_id"),
-      col("review_id").cast("Int"),
-      col("domain_id").cast("Int"),
-      col("domain_hotel_id").cast("BigInt"),
-      col("username").cast("String"),
-      col("text").cast("String"),
-      col("review_datetime").cast("Date"),
-      col("score").cast("Float")
-    )
-
-    val mapping_review_text = hotel_review_text
-      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
+//
+//    val hotel_review_with_text = spark.read
+//      .format("jdbc")
+//      .option("driver", "ru.yandex.clickhouse.ClickHouseDriver")
+//      .option("url", "jdbc:clickhouse://phoenix-db.data.tripi.vn:443/PhoeniX?ssl=true&charset=utf8")
+//      .option("dbtable", "hotel_review")
+//      .option("user", "FiveF1")
+//      .option("password", "z3hE3TkjFzNyXhjb6iek")
+//      .load()
+//
+//    val hotel_review_text = hotel_review_with_text.select(
+//      col("id").cast("String").as("table_review_id"),
+//      col("review_id").cast("Int"),
+//      col("domain_id").cast("Int"),
+//      col("domain_hotel_id").cast("BigInt"),
+//      col("username").cast("String"),
+//      col("text").cast("String"),
+//      col("review_datetime").cast("Date"),
+//      col("score").cast("Float")
+//    )
+//
+//    val mapping_review_text = hotel_review_text
+//      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
 
 //    def limitSize(n: Int, arrCol: Column): Column =
 //      array((0 until n).map(arrCol.getItem):_*)
@@ -267,14 +267,14 @@ class DataProcessingNew {
 //    ).select(
 //      col("id"),
 //      limitSize(3,col("review_list")).as("review_list")
-//    )
-    mapping_review_text.createCassandraTable("testkeyspace","mapping_review_text")
-    mapping_review_text
-      .write
-      .format("org.apache.spark.sql.cassandra")
-      .mode("Append")
-      .options(Map("table" -> "mapping_review_text", "keyspace" -> "testkeyspace"))
-      .save()
+////    )
+//    mapping_review_text.createCassandraTable("testkeyspace","mapping_review_text")
+//    mapping_review_text
+//      .write
+//      .format("org.apache.spark.sql.cassandra")
+//      .mode("Append")
+//      .options(Map("table" -> "mapping_review_text", "keyspace" -> "testkeyspace"))
+//      .save()
 //    val mapping_review_list = mapping_hotel_review_clean
 //      .withColumn("review_list",
 //        mapReviewUdf(col("username"),col("domain_id"),col("text"),col("score"),col("review_datetime")))
@@ -345,10 +345,11 @@ class DataProcessingNew {
     val mapping_hotel_logging_clean = mapping_hotel_logging.select(
       col("logging_id"),
       col("user_id"),
+      col("session_id"),
       col("action_name"),
       col("id"),
       col("rank_on_page"),
-      col("review_number"),
+      col("reviews_number"),
       col("star_number"),
       col("rating_level"),
       col("overall_score"),
