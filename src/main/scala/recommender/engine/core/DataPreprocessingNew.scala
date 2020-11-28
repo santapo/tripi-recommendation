@@ -365,23 +365,30 @@ class DataPreprocessingNew {
 
     val province_clean = province.select(
       col("id").cast("Int").as("province_id"),
-      col("name_no_accent").cast("String").as("province_name")
+      col("name").cast("String").as("province_name")
     )
 
     val district_clean = district.select(
       col("id").cast("Int").as("district_id"),
       col("province_id").cast("Int"),
-      col("name_no_accent").cast("String").as("district_name")
+      col("name").cast("String").as("district_name")
     )
 
-    val stringNormalizer = udf((s: String) => stripAccents(s))
-    val street_clean = street.withColumn("name_no_accent",stringNormalizer(lower(col("name"))))
-      .select(
+    val street_clean = street.select(
         col("id").cast("Int").as("street_id"),
         col("district_id").cast("Int"),
         col("province_id").cast("Int"),
-        col("name_no_accent").cast("String").as("street_name")
+        col("name").cast("String").as("street_name")
       )
+
+//    val stringNormalizer = udf((s: String) => stripAccents(s))
+//    val street_clean = street.withColumn("name_no_accent",stringNormalizer(lower(col("name"))))
+//      .select(
+//        col("id").cast("Int").as("street_id"),
+//        col("district_id").cast("Int"),
+//        col("province_id").cast("Int"),
+//        col("name_no_accent").cast("String").as("street_name")
+//      )
 
     val roothotel_final = roothotel_info_clean
       .join(province_clean,Seq("province_id"),"inner")

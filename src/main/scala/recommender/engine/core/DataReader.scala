@@ -1,7 +1,7 @@
 package recommender.engine.core
 
 import org.apache.spark.sql.{Column, Dataset, Encoders, Row}
-import org.apache.spark.sql.functions.{array, asc, col, collect_list, desc, size, split}
+import org.apache.spark.sql.functions.{array, asc, col, collect_list, desc, lit, size, split, when}
 
 import scala.collection.JavaConversions._
 import org.apache.commons.lang3.StringUtils.stripAccents
@@ -46,7 +46,7 @@ object DataReader {
                    review_count: Int,
                    suggest: Array[Map[String,String]],
                    image_list: Array[String],
-                   final_score: Double,
+                   final_score_1: Double,
                    cleanliness_score: Float,
                    meal_score: Float,
                    location_score: Float,
@@ -70,24 +70,37 @@ object DataReader {
   class readData(val hotel_table:Dataset[Row]){
 
     def search (page:Int,key:String) : readData = {
-      val patternD = new Regex("đ|ð")
-      var newkey = patternD.replaceAllIn(key, "d")
-      newkey = stripAccents(newkey)
-
-      newkey = newkey.toLowerCase().trim
+//      val patternD = new Regex("đ|ð")
+//      var newkey = patternD.replaceAllIn(key, "d")
+//      newkey = stripAccents(newkey)
+//
+//      newkey = newkey.toLowerCase().trim
 
       val hotel_data_1 = this.hotel_table
-        .filter(col("province_name").contains(newkey))
+        .filter(col("province_name").contains(key))
+        .withColumn("final_score_1",col("final_score")*0.8)
 
       val hotel_data_2 = this.hotel_table
-        .filter(col("district_name").contains(newkey))
+        .filter(col("district_name").contains(key))
+        .withColumn("final_score_1",col("final_score")*0.9)
 
       val hotel_data_3 = this.hotel_table
-        .filter(col("street_name").contains(newkey))
+        .filter(col("street_name").contains(key))
+        .withColumn("final_score_1",col("final_score"))
 
       val hotel_data = hotel_data_1.union(hotel_data_2).union(hotel_data_3)
 
-      val hotel_rank = hotel_data.orderBy(col("final_score").desc)
+      val count_cluster = hotel_data.groupBy("hotel_cluster").count()
+      val get_cluster = count_cluster.orderBy(desc("count")).limit(3)
+
+      val hotel_in_cluster = this.hotel_table
+        .join(get_cluster,Seq("hotel_cluster"),"inner")
+        .withColumn("final_score_1",col("final_score")*0.69)
+        .orderBy(col("final_score_1").desc).limit(10)
+
+      val hotel_data_final = hotel_data.union(hotel_in_cluster)
+
+      val hotel_rank = hotel_data_final.orderBy(col("final_score_1").desc)
       val data = hotel_rank.limit(page*5)
 
       val get_hotel_id = data.select(
@@ -377,6 +390,7 @@ object DataReader {
       org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)
 
       val data = this.hotel_table
+        .na.drop()
         .as[hotel](schema)
         .collectAsList
         .toList
