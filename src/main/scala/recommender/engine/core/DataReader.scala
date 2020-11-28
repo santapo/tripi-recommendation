@@ -91,7 +91,7 @@ object DataReader {
       val hotel_data = hotel_data_1.union(hotel_data_2).union(hotel_data_3)
 
       val count_cluster = hotel_data.groupBy("hotel_cluster").count()
-      val get_cluster = count_cluster.orderBy(desc("count")).limit(3)
+      val get_cluster = count_cluster.orderBy(desc("count")).limit(2)
 
       val hotel_in_cluster = this.hotel_table
         .join(get_cluster,Seq("hotel_cluster"),"inner")
@@ -109,32 +109,32 @@ object DataReader {
         col("hotel_cluster")
       )
 
-      val mapping_domain_hotel = spark.read
+//      val mapping_domain_hotel = spark.read
+//        .format("org.apache.spark.sql.cassandra")
+//        .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
+//        .load()
+//
+//      val mapping_id = get_hotel_id
+//        .join(mapping_domain_hotel,Seq("id"),"inner")
+//
+//      def limitSize(n: Int, arrCol: Column): Column =
+//        array((0 until n).map(arrCol.getItem):_*)
+
+      val mapping_image_list = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
+        .options(Map("table" -> "mapping_image_list", "keyspace" -> "testkeyspace2"))
         .load()
 
-      val mapping_id = get_hotel_id
-        .join(mapping_domain_hotel,Seq("id"),"inner")
+//      val mapping_image = mapping_image_list
+//        .join(mapping_id,Seq("domain_id","domain_hotel_id","id"),"inner")
 
-      def limitSize(n: Int, arrCol: Column): Column =
-        array((0 until n).map(arrCol.getItem):_*)
-
-      val mapping_image_1 = spark.read
-        .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace2"))
-        .load()
-
-      val mapping_image = mapping_image_1
-        .join(mapping_id,Seq("domain_id","domain_hotel_id","id"),"inner")
-
-      val mapping_image_list = mapping_image
-        .groupBy("id").agg(
-        collect_list(col("provider_url")).as("image_list")
-      ).select(
-        col("id"),
-        limitSize(10,col("image_list")).as("image_list")
-      )
+//      val mapping_image_list = mapping_image
+//        .groupBy("id").agg(
+//        collect_list(col("provider_url")).as("image_list")
+//      ).select(
+//        col("id"),
+//        limitSize(10,col("image_list")).as("image_list")
+//      )
 
       val mapping_service = spark.read
         .format("org.apache.spark.sql.cassandra")
@@ -292,32 +292,37 @@ object DataReader {
         col("hotel_cluster")
       )
 
-      val mapping_domain_hotel = spark.read
+//      val mapping_domain_hotel = spark.read
+//        .format("org.apache.spark.sql.cassandra")
+//        .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
+//        .load()
+//
+//      val mapping_id = get_hotel_id
+//        .join(mapping_domain_hotel, Seq("id"), "inner")
+//
+//      def limitSize(n: Int, arrCol: Column): Column =
+//        array((0 until n).map(arrCol.getItem): _*)
+//
+//      val mapping_image_1 = spark.read
+//        .format("org.apache.spark.sql.cassandra")
+//        .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace2"))
+//        .load()
+//
+//      val mapping_image = mapping_image_1
+//        .join(mapping_id, Seq("domain_id", "domain_hotel_id", "id"), "inner")
+//
+//      val mapping_image_list = mapping_image
+//        .groupBy("id").agg(
+//        collect_list(col("provider_url")).as("image_list")
+//      ).select(
+//        col("id"),
+//        limitSize(10, col("image_list")).as("image_list")
+//      )
+
+      val mapping_image_list = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
+        .options(Map("table" -> "mapping_image_list", "keyspace" -> "testkeyspace2"))
         .load()
-
-      val mapping_id = get_hotel_id
-        .join(mapping_domain_hotel, Seq("id"), "inner")
-
-      def limitSize(n: Int, arrCol: Column): Column =
-        array((0 until n).map(arrCol.getItem): _*)
-
-      val mapping_image_1 = spark.read
-        .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace2"))
-        .load()
-
-      val mapping_image = mapping_image_1
-        .join(mapping_id, Seq("domain_id", "domain_hotel_id", "id"), "inner")
-
-      val mapping_image_list = mapping_image
-        .groupBy("id").agg(
-        collect_list(col("provider_url")).as("image_list")
-      ).select(
-        col("id"),
-        limitSize(10, col("image_list")).as("image_list")
-      )
 
       val mapping_service = spark.read
         .format("org.apache.spark.sql.cassandra")

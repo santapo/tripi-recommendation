@@ -70,6 +70,10 @@ class DataPreprocessingNew {
       " suggest list<frozen <map<text,text>>>," +
       " final_score Double)")
 
+    session.execute("CREATE TABLE testkeyspace2.mapping_image_list " +
+      "(id int PRIMARY KEY," +
+      "image_list list<text>)")
+
 //    session.execute("CREATE TABLE testkeyspace2.mapping_review_list " +
 //      "(id text PRIMARY KEY," +
 //      " review_list list<frozen <map<text,text>>>)")

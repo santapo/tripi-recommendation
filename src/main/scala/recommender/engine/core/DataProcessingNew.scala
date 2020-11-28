@@ -257,8 +257,8 @@ class DataProcessingNew {
 //    val mapping_review_text = hotel_review_text
 //      .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
 
-//    def limitSize(n: Int, arrCol: Column): Column =
-//      array((0 until n).map(arrCol.getItem):_*)
+    def limitSize(n: Int, arrCol: Column): Column =
+      array((0 until n).map(arrCol.getItem):_*)
 //
 //    val mapping_review_count_word = mapping_review_text
 //      .withColumn("word_count",size(split(col("text")," ")))
@@ -303,29 +303,32 @@ class DataProcessingNew {
     val mapping_image = hotel_image
       .join(mapping_domain_hotel,Seq("domain_id","domain_hotel_id"),"inner")
 
-    val incrementbyOne = Window.partitionBy(lit("C")).orderBy(lit("C").asc)
+//    val incrementbyOne = Window.partitionBy(lit("C")).orderBy(lit("C").asc)
+//
+//    val mapping_image_final = mapping_image.withColumn("key", row_number().over(incrementbyOne))
+//      .select(
+//        col("key"),
+//        col("id"),
+//        col("domain_id"),
+//        col("domain_hotel_id"),
+//        col("provider_url")
+//      )
+    val mapping_image_list = mapping_image
+      .groupBy("id").agg(
+      collect_list(col("provider_url")).as("image_list")
+    ).select(
+      col("id"),
+      limitSize(10,col("image_list")).as("image_list")
+    )
 
-    mapping_image.withColumn("key", row_number().over(incrementbyOne))
-      .select(
-        col("key"),
-        col("id"),
-        col("domain_id"),
-        col("domain_hotel_id"),
-        col("provider_url")
-      )
-//    val mapping_image_list = mapping_image
-//      .groupBy("id").agg(
-//      collect_list(col("provider_url")).as("image_list")
-//    ).select(
-//      col("id"),
-//      limitSize(10,col("image_list")).as("image_list")
-//    )
-    mapping_image.createCassandraTable("testkeyspace2","mapping_image")
-    mapping_image
+    val mapping_image_list_clean = mapping_image_list.filter(size(col("image_list"))>0)
+
+    //mapping_image_list_clean.createCassandraTable("testkeyspace2","mapping_image")
+    mapping_image_list_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace2"))
+      .options(Map("table" -> "mapping_image_list", "keyspace" -> "testkeyspace2"))
       .save()
 
 //    val mapping_root_review_image = mapping_root_clean_with_review_count
