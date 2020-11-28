@@ -55,9 +55,9 @@ val mapping_hotel_logging_clean = hotel_logging_clean.select(
 )
 
 
-val logging_drop = mapping_hotel_logging_clean.filter(col("id")==="-1")
+val logging_drop_1 = mapping_hotel_logging_clean.filter(col("id")==="-1" && col("action_name") =!="2_click_detail")
 
-val logging_rank_on_page = logging_drop.na.fill(29,Array("rank_on_page"))
+val logging_rank_on_page = logging_drop_1.na.fill(29,Array("rank_on_page"))
 
 val logging_star_number = logging_rank_on_page.na.fill(3,Array("star_number"))
 
@@ -72,4 +72,6 @@ val logging_review_number_2 = logging_review_number_1
 val logging_overall_score = logging_review_number_2.na.fill(80,Array("overall_score"))
 
 val logging_price = logging_overall_score.na.fill(3000000,Array("price"))
+
+val logging_drop_2 = logging_price.filter(col("rank_on_page")<31)
 
