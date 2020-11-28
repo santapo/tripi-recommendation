@@ -495,10 +495,9 @@ class DataProcessingNew {
 
     val service_score = mapping_service
       .withColumn("service_score",sigmoidServiceUdf(
-        col("relax_spa"),
-        col("relax_massage"),
-        col("relax_outdoor_pool"),
-        col("relax_sauna"),
+        col("location_score"),
+        col("service_score"),
+        col("sleep_quality_score"),
         col("cleanliness_score"),
         col("meal_score")).cast("Float"))
 
