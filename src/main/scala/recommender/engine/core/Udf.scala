@@ -37,109 +37,19 @@ object Udf {
     hotelName.trim()
   }
 
-  val getProvinceFirstOrder = (str: String) => {
-    var province = stripAccents(str)
-    val patternVietNam = new Regex(".+(?=, viet)")
-    val patternHanoi = new Regex("hanoi")
-    val patternHCM = new Regex("h chi minh")
-    val patternD = new Regex("đ|ð")
-    val patternSub =  new Regex("(tinh | province|thanh pho | district|khu vuc tp\\. |city| municipality)|s1-1516 |tp.|\\d")
-    val patternCloseBrac = new Regex(".+(?=\\))")
-    val patternSymbol = new Regex("[^A-Za-z ]")
-
-
-    province = province.toLowerCase()
-    province = patternHanoi.replaceAllIn(province,"ha noi")
-    province = patternHCM.replaceAllIn(province,"ho chi minh")
-    province = patternSub.replaceAllIn(province, "")
-    province = patternD.replaceAllIn(province, "d")
-
-    // Tach viet nam khoi str
-    if(province.contains(", viet")){
-      province = patternVietNam.findAllIn(province).mkString
-    }
-
-    // commune,district,province,country -> province
-    province = province.split(", ").last
-
-    if(province.contains("(")){
-      if(province.contains("(province)") || province.contains("()")){
-        province = province.split("\\(").head
-      }else{
-        province = province.split(("\\(")).last
-        province = patternCloseBrac.findAllIn(province).mkString
-      }
-    }
-
-    province = patternSymbol.replaceAllIn(province,"")
-    // remove whitespace between words and trim string
-    province = province.replaceAll("\\s+", " ")
-
-    province.trim()
-  }
-
-  val getProvinceSecondOrder = (str: String) => {
-    str match {
-      case "tan an" => "tien giang"
-      case "ba vi" => "ha noi"
-      case "quy nhon" => "binh dinh"
-      case "da lat" => "lam dong"
-      case "dien bien phu" => "dien bien"
-      case "hue" | "thua thienhue" => "thue thien hue"
-      case "ap thien phuoc" | "mui ne"=> "binh thuan"
-      case "ba se" => "can tho"
-      case "quan dao cat ba" | "dao cat ba" => "hai phong"
-      case "na ngo" => "lai chau"
-      case "cam lam" => "khanh hoa"
-      case "thon lac nghiep" | "phan rang" => "ninh thuan"
-      case "huyen long khanh" => "dong nai"
-      case "blao klong ner" => "lam dong"
-      case "huyen phu quy" => "binh thuan"
-      case "rach gia" | "kien gian" => "kien giang"
-      case "sa pa" => "lao cai"
-      case "hoi an" | "yen khe" => "ninh binh"
-      case "phuc yen" => "vinh phuc"
-      case "tan tao" => "ho chi minh"
-      case "cua lo" => "nghe an"
-      case "hoang hoa" | "sam son" => "thanh hoa"
-      case "gia lam pho" => "ha noi"
-      case "ngoc quang" => "vinh phuc"
-      case "nha trang" => "khanh hoa"
-      case "ap phu" => "binh thuan"
-      case "bac ha" | "sapa" => "lao cai"
-      case "vung tau" | "xa thang tam" | "quan dao con dao" | "ba ria"=> "ba ria vung tau"
-      case "moc chau" => "son la"
-      case "vinh binh" | "thu dau mot" => "binh duong"
-      case "ban na ba" => "nghe an"
-      case "dong ha" => "quang tri"
-      case "an ma" => "bac kan"
-      case "lao san chay" => "yen bai"
-      case "ap da thien" => "lam dong"
-      case "chau doc" => "an giang"
-      case "phu quoc" | "dao phu quoc" | "kien gian" => "kien giang"
-      case "tu son" => "bac ninh"
-      case "dien chau" => "nghe an"
-      case "dong van" | "quan ba" | "meo vac" => "ha giang"
-      case "phong nha" => "quang binh"
-      case "ha long" => "quang ninh"
-      case _ => str
-    }
-  }
-
   val sigmoidPrice = (avg_price: Float, avg_price_cluster: Float) =>{
     val priceScore = 1/(1+pow(3,-avg_price/avg_price_cluster))
     priceScore
   }
 
-  val sigmoidService = (relax_spa: Int, relax_massage: Int, relax_outdoor_pool: Int, relax_sauna:Int, cleanliness_score: Float, meal_score: Float) =>{
-    val relax_spa_score = if(relax_spa == -1) 0 else relax_spa
-    val relax_massage_score = if(relax_massage == -1) 0 else relax_massage
-    val relax_outdoor_pool_score = if(relax_outdoor_pool == -1) 0 else relax_outdoor_pool
-    val relax_sauna_score = if(relax_sauna == -1) 0 else relax_sauna
+  val sigmoidService = (location_score: Float, service_score: Float, sleep_quality_score: Float, cleanliness_score: Float, meal_score: Float) =>{
+    val location_score_score = if(location_score == -1) 0 else location_score
+    val service_score_score = if(service_score == -1) 0 else service_score
+    val sleep_quality_score_score = if(sleep_quality_score == -1) 0 else sleep_quality_score
     val cleanliness_score_score = if(cleanliness_score == -1) 0 else cleanliness_score
     val meal_score_score = if(meal_score == -1) 0 else meal_score
 
-    val serviceScore = 1/(1+pow(E,-(relax_spa_score+relax_massage_score+relax_outdoor_pool_score+relax_sauna_score+cleanliness_score_score+meal_score_score)/30))
+    val serviceScore = 1/(1+pow(E,-(location_score_score+service_score_score+sleep_quality_score_score+cleanliness_score_score+meal_score_score)/40))
 
     serviceScore  }
 
@@ -189,10 +99,6 @@ object Udf {
   val mapProviderUdf = udf(mapProvider)
 
   val mapReviewUdf = udf(mapReview)
-
-  val getProvinceFirstOrderUdf = udf(getProvinceFirstOrder)
-
-  val getProvinceSecondOrderUdf = udf(getProvinceSecondOrder)
 
   val sigmoidServiceUdf = udf(sigmoidService)
 
