@@ -54,24 +54,36 @@ val mapping_hotel_logging_clean = hotel_logging_clean.select(
   col("price")
 )
 
+val a = mapping_hotel_logging_clean.groupBy().count().take(1)
 
-val logging_drop_1 = mapping_hotel_logging_clean.filter(col("id")==="-1" && col("action_name") =!="2_click_detail")
+a(0)(0)
 
-val logging_rank_on_page = logging_drop_1.na.fill(29,Array("rank_on_page"))
+a(0)(0).toString().toInt
 
-val logging_star_number = logging_rank_on_page.na.fill(3,Array("star_number"))
+a(0)(0).toString().toInt<19999
 
-val logging_rating_level = logging_star_number.na.fill(3,Array("rating_level"))
+val map = mapping_hotel_logging_clean.withColumn("overall_score",col("overall_score")*2)
 
-val logging_review_number_1 = logging_rating_level.na.fill(120,Array("reviews_number"))
+map.show()
 
-val logging_review_number_2 = logging_review_number_1
-  .withColumn("reviews_number",
-    when(col("reviews_number").equalTo("-1"),120).otherwise(col("reviews_number")))
-
-val logging_overall_score = logging_review_number_2.na.fill(80,Array("overall_score"))
-
-val logging_price = logging_overall_score.na.fill(3000000,Array("price"))
-
-val logging_drop_2 = logging_price.filter(col("rank_on_page")<31)
+//
+//val logging_drop_1 = mapping_hotel_logging_clean.filter(col("id")==="-1" && col("action_name") =!="2_click_detail")
+//
+//val logging_rank_on_page = logging_drop_1.na.fill(29,Array("rank_on_page"))
+//
+//val logging_star_number = logging_rank_on_page.na.fill(3,Array("star_number"))
+//
+//val logging_rating_level = logging_star_number.na.fill(3,Array("rating_level"))
+//
+//val logging_review_number_1 = logging_rating_level.na.fill(120,Array("reviews_number"))
+//
+//val logging_review_number_2 = logging_review_number_1
+//  .withColumn("reviews_number",
+//    when(col("reviews_number").equalTo("-1"),120).otherwise(col("reviews_number")))
+//
+//val logging_overall_score = logging_review_number_2.na.fill(80,Array("overall_score"))
+//
+//val logging_price = logging_overall_score.na.fill(3000000,Array("price"))
+//
+//val logging_drop_2 = logging_price.filter(col("rank_on_page")<31)
 
