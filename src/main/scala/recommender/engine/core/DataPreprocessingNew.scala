@@ -27,10 +27,10 @@ class DataPreprocessingNew {
 
   val connector = CassandraConnector(sparkContext.getConf)
   connector.withSessionDo(session => {
-    session.execute("DROP KEYSPACE IF EXISTS testkeyspace")
-    session.execute("CREATE KEYSPACE testkeyspace WITH replication = {'class':'SimpleStrategy', 'replication_factor':1}")
-    session.execute("USE testkeyspace")
-    session.execute("CREATE TABLE testkeyspace.mapping_root " +
+    session.execute("DROP KEYSPACE IF EXISTS tripi-5f1")
+    session.execute("CREATE KEYSPACE tripi-5f1 WITH replication = {'class':'SimpleStrategy', 'replication_factor':1}")
+    session.execute("USE tripi-5f1")
+    session.execute("CREATE TABLE tripi-5f1.mapping_root " +
       "(id text PRIMARY KEY," +
       " name text," +
       " address text," +
@@ -49,7 +49,7 @@ class DataPreprocessingNew {
       " review_count int," +
       " suggest list<frozen <map<text,text>>>)")
 
-    session.execute("CREATE TABLE testkeyspace.hotel_table " +
+    session.execute("CREATE TABLE tripi-5f1.hotel_table " +
       "(id text PRIMARY KEY," +
       " hotel_cluster int," +
       " name text," +
@@ -70,11 +70,11 @@ class DataPreprocessingNew {
       " suggest list<frozen <map<text,text>>>," +
       " final_score Double)")
 
-//    session.execute("CREATE TABLE testkeyspace.mapping_review_list " +
+//    session.execute("CREATE TABLE tripi-5f1.mapping_review_list " +
 //      "(id text PRIMARY KEY," +
 //      " review_list list<frozen <map<text,text>>>)")
 //
-//    session.execute("CREATE TABLE testkeyspace.mapping_image_list " +
+//    session.execute("CREATE TABLE tripi-5f1.mapping_image_list " +
 //      "(id text PRIMARY KEY," +
 //      " image_list list<text>)")
 
@@ -279,12 +279,12 @@ class DataPreprocessingNew {
       col("avg_price").cast("Float")
     )
 
-    hotel_mapping_with_price_clean.createCassandraTable("testkeyspace", "hotel_mapping")
+    hotel_mapping_with_price_clean.createCassandraTable("tripi-5f1", "hotel_mapping")
     hotel_mapping_with_price_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "hotel_mapping", "keyspace" -> "testkeyspace"))
+      .options(Map("table" -> "hotel_mapping", "keyspace" -> "tripi-5f1"))
       .save()
 
     // Create hotel_service table with service_score
@@ -335,12 +335,12 @@ class DataPreprocessingNew {
       .join(hotel_service_clean, Seq("hotel_id"), "inner")
       .dropDuplicates()
 
-    hotel_service_table.createCassandraTable("testkeyspace", "hotel_service")
+    hotel_service_table.createCassandraTable("tripi-5f1", "hotel_service")
     hotel_service_table
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "hotel_service", "keyspace" -> "testkeyspace"))
+      .options(Map("table" -> "hotel_service", "keyspace" -> "tripi-5f1"))
       .save()
 
 
@@ -412,12 +412,12 @@ class DataPreprocessingNew {
       col("street_name").cast("String")
     )
 
-    roothotel_final_clean.createCassandraTable("testkeyspace", "root_hotel")
+    roothotel_final_clean.createCassandraTable("tripi-5f1", "root_hotel")
     roothotel_final_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace"))
+      .options(Map("table" -> "root_hotel", "keyspace" -> "tripi-5f1"))
       .save()
 
 
@@ -431,12 +431,12 @@ class DataPreprocessingNew {
       col("score").cast("Float")
     )
 
-    hotel_review_clean.createCassandraTable("testkeyspace","hotel_review")
+    hotel_review_clean.createCassandraTable("tripi-5f1","hotel_review")
     hotel_review_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "hotel_review", "keyspace" -> "testkeyspace"))
+      .options(Map("table" -> "hotel_review", "keyspace" -> "tripi-5f1"))
       .save()
 
     val hotel_logging_clean = hotel_logging.select(
@@ -453,12 +453,12 @@ class DataPreprocessingNew {
       col("price").cast("Int")
     )
 
-    hotel_logging_clean.createCassandraTable("testkeyspace","hotel_logging")
+    hotel_logging_clean.createCassandraTable("tripi-5f1","hotel_logging")
     hotel_logging_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace"))
+      .options(Map("table" -> "hotel_logging", "keyspace" -> "tripi-5f1"))
       .save()
 
     // Clean hotel location
@@ -481,12 +481,12 @@ class DataPreprocessingNew {
 //        col("category").cast("String")
 //      )
 //
-//    hotel_mapping_location_distance.createCassandraTable("testkeyspace", "hotel_location")
+//    hotel_mapping_location_distance.createCassandraTable("tripi-5f1", "hotel_location")
 //    hotel_mapping_location_distance
 //      .write
 //      .format("org.apache.spark.sql.cassandra")
 //      .mode("Append")
-//      .options(Map("table" -> "hotel_location", "keyspace" -> "testkeyspace"))
+//      .options(Map("table" -> "hotel_location", "keyspace" -> "tripi-5f1"))
 //      .save()
 
     Thread.sleep(120000)
@@ -507,12 +507,12 @@ class DataPreprocessingNew {
       col("rank_point").cast("Int"))
       .dropDuplicates("domain_id", "domain_hotel_id")
 
-    cosine_hotel_top_clean.createCassandraTable("testkeyspace", "cosine_similar")
+    cosine_hotel_top_clean.createCassandraTable("tripi-5f1", "cosine_similar")
     cosine_hotel_top_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "cosine_similar", "keyspace" -> "testkeyspace"))
+      .options(Map("table" -> "cosine_similar", "keyspace" -> "tripi-5f1"))
       .save()
 
     println(Calendar.getInstance().getTime + ": Data is Saved\n")
