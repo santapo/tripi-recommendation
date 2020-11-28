@@ -6,9 +6,9 @@ import recommender.engine.restserving.AkkaServer
 object Main {
   def main(args: Array[String]): Unit = {
 
-    val getdata = new DataPreprocessingNew
-
-    getdata.dataToCassandra()
+//    val getdata = new DataPreprocessingNew
+//
+//    getdata.dataToCassandra()
 
 
 //    val data = new DataProcessingNew

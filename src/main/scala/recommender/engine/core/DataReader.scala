@@ -9,7 +9,7 @@ import org.json4s.DefaultFormats
 import org.json4s.jackson.Json
 
 import scala.util.matching.Regex
-import recommender.engine.core.Udf.mapReviewUdf
+import recommender.engine.core.Udf.convertPriceUdf
 
 class DataReader{
 
@@ -40,7 +40,7 @@ object DataReader {
                    checkout_time: String,
                    overall_score: Float,
                    description: String,
-                   avg_price: Float,
+                   avg_price: String,
                    longitude: Float,
                    latitude: Float,
                    review_count: Int,
@@ -86,7 +86,7 @@ object DataReader {
 
       val hotel_data_3 = this.hotel_table
         .filter(col("street_name").contains(key))
-        .withColumn("final_score_1",col("final_score"))
+        .withColumn("final_score_1",col("final_score")*1.05)
 
       val hotel_data = hotel_data_1.union(hotel_data_2).union(hotel_data_3)
 
@@ -97,6 +97,7 @@ object DataReader {
         .join(get_cluster,Seq("hotel_cluster"),"inner")
         .withColumn("final_score_1",col("final_score")*0.69)
         .orderBy(col("final_score_1").desc).limit(10)
+        .drop(col("count"))
 
       val hotel_data_final = hotel_data.union(hotel_in_cluster)
 
@@ -155,13 +156,13 @@ object DataReader {
         col("checkout_time"),
         col("overall_score"),
         col("description"),
-        col("avg_price"),
+        convertPriceUdf(col("avg_price")).as("avg_price"),
         col("longitude"),
         col("latitude"),
         col("review_count"),
         col("suggest"),
         col("image_list"),
-        col("final_score"),
+        col("final_score_1"),
         col("cleanliness_score"),
         col("meal_score"),
         col("location_score"),
@@ -279,6 +280,7 @@ object DataReader {
       val hotel_in_cluster = this.hotel_table
         .join(get_cluster,Seq("hotel_cluster"),"inner")
         .orderBy(col("avg_price").desc).limit(10)
+        .drop(col("count"))
 
       val hotel_data_final = hotel_data.union(hotel_in_cluster)
 
@@ -337,13 +339,13 @@ object DataReader {
         col("checkout_time"),
         col("overall_score"),
         col("description"),
-        col("avg_price"),
+        convertPriceUdf(col("avg_price")).as("avg_price"),
         col("longitude"),
         col("latitude"),
         col("review_count"),
         col("suggest"),
         col("image_list"),
-        col("final_score"),
+        col("final_score_1"),
         col("cleanliness_score"),
         col("meal_score"),
         col("location_score"),
