@@ -34,6 +34,22 @@ class AkkaServer {
               getprice
             }
           }
+        } ~ path("lowest_price") {
+          parameters('page.as[Int], 'key.as[String]) { (page, key) =>
+            complete {
+              val hotel_table = readData.readData()
+              val getprice = hotel_table.lowest_price(page, key).load()
+              getprice
+            }
+          }
+        } ~ path("top_province") {
+          parameters('page.as[Int]) { (page) =>
+            complete {
+              val hotel_table = readData.readData()
+              val getprice = hotel_table.top_province(page).load_province()
+              getprice
+            }
+          }
         }
       }
     )
