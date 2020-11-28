@@ -1,7 +1,7 @@
 package recommender.engine.core
 
 import org.apache.spark.sql.{Column, Dataset, Encoders, Row}
-import org.apache.spark.sql.functions.{array, asc, col, collect_list, desc, lit, size, split, when}
+import org.apache.spark.sql.functions.{array, asc, col, collect_list, desc, lit, size, split, udf, when}
 
 import scala.collection.JavaConversions._
 import org.apache.commons.lang3.StringUtils.stripAccents
@@ -391,6 +391,7 @@ object DataReader {
     def load_province(): String = {
       val schema = Encoders.product[province]
       org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)
+
       val data = this.hotel_table
         .na.drop()
         .as[province](schema)
@@ -406,7 +407,17 @@ object DataReader {
       val schema = Encoders.product[hotel]
       org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)
 
-      val data = this.hotel_table
+      val arrSchema = this.hotel_table.schema(19).dataType
+      val emptyArr = udf(() => Seq.empty[Any],arrSchema)
+
+      val data_fill_na = this.hotel_table.na.fill(0)
+        .na.fill(" ")
+
+      val data_fill_na_2 = data_fill_na
+        .withColumn("image_list",when(col("image_list").isNull,emptyArr()).otherwise(col("image_list")))
+
+
+      val data = data_fill_na_2
         .na.drop()
         .as[hotel](schema)
         .collectAsList
