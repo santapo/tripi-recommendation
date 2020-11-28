@@ -46,7 +46,7 @@ object DataReader {
                    review_count: Int,
                    suggest: Array[Map[String,String]],
                    image_list: Array[String],
-                   final_score_1: Double,
+                   final_score: String,
                    cleanliness_score: Float,
                    meal_score: Float,
                    location_score: Float,
@@ -78,15 +78,15 @@ object DataReader {
 
       val hotel_data_1 = this.hotel_table
         .filter(col("province_name").contains(key))
-        .withColumn("final_score_1",col("final_score")*0.8)
+        .withColumn("final_score",col("final_score")*0.8)
 
       val hotel_data_2 = this.hotel_table
         .filter(col("district_name").contains(key))
-        .withColumn("final_score_1",col("final_score")*0.9)
+        .withColumn("final_score",col("final_score")*0.9)
 
       val hotel_data_3 = this.hotel_table
         .filter(col("street_name").contains(key))
-        .withColumn("final_score_1",col("final_score")*1.05)
+        .withColumn("final_score",col("final_score")*1.05)
 
       val hotel_data = hotel_data_1.union(hotel_data_2).union(hotel_data_3)
 
@@ -95,13 +95,13 @@ object DataReader {
 
       val hotel_in_cluster = this.hotel_table
         .join(get_cluster,Seq("hotel_cluster"),"inner")
-        .withColumn("final_score_1",col("final_score")*0.69)
-        .orderBy(col("final_score_1").desc).limit(10)
+        .withColumn("final_score",col("final_score")*0.69)
+        .orderBy(col("final_score").desc).limit(10)
         .drop(col("count"))
 
       val hotel_data_final = hotel_data.union(hotel_in_cluster)
 
-      val hotel_rank = hotel_data_final.orderBy(col("final_score_1").desc)
+      val hotel_rank = hotel_data_final.orderBy(col("final_score").desc)
       val data = hotel_rank.limit(page*5)
 
       val get_hotel_id = data.select(
@@ -162,7 +162,7 @@ object DataReader {
         col("review_count"),
         col("suggest"),
         col("image_list"),
-        col("final_score_1"),
+        convertPriceUdf(col("final_score")).as("final_score"),
         col("cleanliness_score"),
         col("meal_score"),
         col("location_score"),
@@ -350,7 +350,7 @@ object DataReader {
         col("review_count"),
         col("suggest"),
         col("image_list"),
-        col("final_score_1"),
+        convertPriceUdf(col("final_score")).as("final_score"),
         col("cleanliness_score"),
         col("meal_score"),
         col("location_score"),
@@ -407,7 +407,7 @@ object DataReader {
       val schema = Encoders.product[hotel]
       org.apache.spark.sql.catalyst.encoders.OuterScopes.addOuterScope(this)
 
-      val arrSchema = this.hotel_table.schema(19).dataType
+      val arrSchema = this.hotel_table.schema(15).dataType
       val emptyArr = udf(() => Seq.empty[Any],arrSchema)
 
       val data_fill_na = this.hotel_table.na.fill(0)
