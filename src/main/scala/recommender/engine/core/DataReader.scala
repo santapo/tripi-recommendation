@@ -110,7 +110,7 @@ object DataReader {
 
       val mapping_domain_hotel = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "tripi-5f1"))
+        .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
         .load()
 
       val mapping_id = get_hotel_id
@@ -121,7 +121,7 @@ object DataReader {
 
       val mapping_image_1 = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_image", "keyspace" -> "tripi-5f1"))
+        .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace2"))
         .load()
 
       val mapping_image = mapping_image_1
@@ -137,7 +137,7 @@ object DataReader {
 
       val mapping_service = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_service", "keyspace" -> "tripi-5f1"))
+        .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace2"))
         .load()
 
       val data_final = data
@@ -208,7 +208,7 @@ object DataReader {
 
 //      val mapping_review_text = spark.read
 //        .format("org.apache.spark.sql.cassandra")
-//        .options(Map("table" -> "mapping_review_text", "keyspace" -> "tripi-5f1"))
+//        .options(Map("table" -> "mapping_review_text", "keyspace" -> "testkeyspace2"))
 //        .load()
 //
 //      val review_data = mapping_review_text
@@ -245,12 +245,12 @@ object DataReader {
 
 //      val mapping_image_list = spark.read
 //        .format("org.apache.spark.sql.cassandra")
-//        .options(Map("table" -> "mapping_image_list", "keyspace" -> "tripi-5f1"))
+//        .options(Map("table" -> "mapping_image_list", "keyspace" -> "testkeyspace2"))
 //        .load()
 //
 //      val mapping_review_list = spark.read
 //        .format("org.apache.spark.sql.cassandra")
-//        .options(Map("table" -> "mapping_review_list", "keyspace" -> "tripi-5f1"))
+//        .options(Map("table" -> "mapping_review_list", "keyspace" -> "testkeyspace2"))
 //        .load()
 
     }
@@ -292,7 +292,7 @@ object DataReader {
 
       val mapping_domain_hotel = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "tripi-5f1"))
+        .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
         .load()
 
       val mapping_id = get_hotel_id
@@ -303,7 +303,7 @@ object DataReader {
 
       val mapping_image_1 = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_image", "keyspace" -> "tripi-5f1"))
+        .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace2"))
         .load()
 
       val mapping_image = mapping_image_1
@@ -319,7 +319,7 @@ object DataReader {
 
       val mapping_service = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "mapping_service", "keyspace" -> "tripi-5f1"))
+        .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace2"))
         .load()
 
       val data_final = data
@@ -371,7 +371,7 @@ object DataReader {
       //val dataHotelRank = dataHotel.orderBy(col("avg(final_score)").desc).withColumnRenamed("avg(final_score)","avg_score")
       val hotel_logging = spark.read
         .format("org.apache.spark.sql.cassandra")
-        .options(Map("table" -> "hotel_logging", "keyspace" -> "tripi-5f1"))
+        .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace2"))
         .load()
       dataHotel.join(hotel_logging, dataHotel("id") === hotel_logging("id"))
       val province_rank = dataHotel.groupBy("province_name").count().orderBy(col("count").desc)
@@ -415,7 +415,7 @@ object DataReader {
 
     val hotel_table = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_table", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "hotel_table", "keyspace" -> "testkeyspace2"))
       .load()
       .cache()
 

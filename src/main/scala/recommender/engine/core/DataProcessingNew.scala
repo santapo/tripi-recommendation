@@ -32,7 +32,7 @@ class DataProcessingNew {
 
   val connector = CassandraConnector(sparkContext.getConf)
   connector.withSessionDo(session => {
-    session.execute("USE tripi-5f1")
+    session.execute("USE testkeyspace2")
   })
 
   def dataMapping(): Unit = {
@@ -43,37 +43,37 @@ class DataProcessingNew {
     //
     val hotel_mapping = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_mapping", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "hotel_mapping", "keyspace" -> "testkeyspace2"))
       .load()
 
     val cosine_similar = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "cosine_similar", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "cosine_similar", "keyspace" -> "testkeyspace2"))
       .load()
 
     val root_hotel = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "root_hotel", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "root_hotel", "keyspace" -> "testkeyspace2"))
       .load()
 
     val hotel_service = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_service", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "hotel_service", "keyspace" -> "testkeyspace2"))
       .load()
 
     val hotel_review = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_review", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "hotel_review", "keyspace" -> "testkeyspace2"))
       .load()
 
     val hotel_logging = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "hotel_logging", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "hotel_logging", "keyspace" -> "testkeyspace2"))
       .load()
 
 //    val hotel_location = spark.read
 //      .format("org.apache.spark.sql.cassandra")
-//      .options(Map("table" -> "hotel_location", "keyspace" -> "tripi-5f1"))
+//      .options(Map("table" -> "hotel_location", "keyspace" -> "testkeyspace2"))
 //      .load()
 
     val hotel_image = spark.read
@@ -149,12 +149,12 @@ class DataProcessingNew {
       col("domain_hotel_id")
     )
 
-    mapping_domain_hotel.createCassandraTable("tripi-5f1","mapping_domain_hotel")
+    mapping_domain_hotel.createCassandraTable("testkeyspace2","mapping_domain_hotel")
     mapping_domain_hotel
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
       .save()
 
     // Mapping_service
@@ -196,12 +196,12 @@ class DataProcessingNew {
       max(col("shuttle_room")).as("shuttle_room")
     )
 
-    mapping_service.createCassandraTable("tripi-5f1","mapping_service")
+    mapping_service.createCassandraTable("testkeyspace2","mapping_service")
     mapping_service
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "mapping_service", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace2"))
       .save()
 
     // Mapping_location
@@ -224,12 +224,12 @@ class DataProcessingNew {
       col("score")
     )
 
-    mapping_hotel_review_clean.createCassandraTable("tripi-5f1","mapping_review")
+    mapping_hotel_review_clean.createCassandraTable("testkeyspace2","mapping_review")
     mapping_hotel_review_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "mapping_review", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_review", "keyspace" -> "testkeyspace2"))
       .save()
 
     // Review count and review list
@@ -275,12 +275,12 @@ class DataProcessingNew {
 //      col("id"),
 //      limitSize(3,col("review_list")).as("review_list")
 ////    )
-//    mapping_review_text.createCassandraTable("tripi-5f1","mapping_review_text")
+//    mapping_review_text.createCassandraTable("testkeyspace2","mapping_review_text")
 //    mapping_review_text
 //      .write
 //      .format("org.apache.spark.sql.cassandra")
 //      .mode("Append")
-//      .options(Map("table" -> "mapping_review_text", "keyspace" -> "tripi-5f1"))
+//      .options(Map("table" -> "mapping_review_text", "keyspace" -> "testkeyspace2"))
 //      .save()
 //    val mapping_review_list = mapping_hotel_review_clean
 //      .withColumn("review_list",
@@ -320,12 +320,12 @@ class DataProcessingNew {
 //      col("id"),
 //      limitSize(10,col("image_list")).as("image_list")
 //    )
-    mapping_image.createCassandraTable("tripi-5f1","mapping_image")
+    mapping_image.createCassandraTable("testkeyspace2","mapping_image")
     mapping_image
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "mapping_image", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_image", "keyspace" -> "testkeyspace2"))
       .save()
 
 //    val mapping_root_review_image = mapping_root_clean_with_review_count
@@ -354,7 +354,7 @@ class DataProcessingNew {
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "mapping_root", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace2"))
       .save()
 
 
@@ -376,12 +376,12 @@ class DataProcessingNew {
       col("price")
     )
 
-    mapping_hotel_logging_clean.createCassandraTable("tripi-5f1","mapping_logging")
+    mapping_hotel_logging_clean.createCassandraTable("testkeyspace2","mapping_logging")
     mapping_hotel_logging_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "mapping_logging", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_logging", "keyspace" -> "testkeyspace2"))
       .save()
 
     println(Calendar.getInstance().getTime + ": Mapping process is success\n")
@@ -395,17 +395,17 @@ class DataProcessingNew {
     //
     val mapping_root = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "mapping_root", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace2"))
       .load()
 
     val mapping_review = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "mapping_review", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_review", "keyspace" -> "testkeyspace2"))
       .load()
 
     val mapping_service = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "mapping_service", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace2"))
       .load()
 
     // Clustering
@@ -469,12 +469,12 @@ class DataProcessingNew {
       col("final_review_score")
     )
 
-    mapping_review_score.createCassandraTable("tripi-5f1","mapping_review_score")
+    mapping_review_score.createCassandraTable("testkeyspace2","mapping_review_score")
     mapping_review_score
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "mapping_review_score", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_review_score", "keyspace" -> "testkeyspace2"))
       .save()
 
     // Add price/service score
@@ -512,12 +512,12 @@ class DataProcessingNew {
       col("service_per_price_score")
     )
 
-    service_per_price_score_clean.createCassandraTable("tripi-5f1","service_price_score")
+    service_per_price_score_clean.createCassandraTable("testkeyspace2","service_price_score")
     service_per_price_score_clean
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "service_price_score", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "service_price_score", "keyspace" -> "testkeyspace2"))
       .save()
 
     println(Calendar.getInstance().getTime + ": Clustering is Success\n")
@@ -532,15 +532,15 @@ class DataProcessingNew {
     //
     val service_price_score = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "service_price_score", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "service_price_score", "keyspace" -> "testkeyspace2"))
       .load()
     val mapping_review_score = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "mapping_review_score", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_review_score", "keyspace" -> "testkeyspace2"))
       .load()
     val mapping_root = spark.read
       .format("org.apache.spark.sql.cassandra")
-      .options(Map("table" -> "mapping_root", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "mapping_root", "keyspace" -> "testkeyspace2"))
       .load()
 
     // FINAL SCORE
@@ -582,7 +582,7 @@ class DataProcessingNew {
       .write
       .format("org.apache.spark.sql.cassandra")
       .mode("Append")
-      .options(Map("table" -> "hotel_table", "keyspace" -> "tripi-5f1"))
+      .options(Map("table" -> "hotel_table", "keyspace" -> "testkeyspace2"))
       .save()
 
     println(Calendar.getInstance().getTime + ": Ranking is Completed!\n")
