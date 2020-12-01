@@ -148,14 +148,14 @@ class DataProcessingNew {
       col("domain_id"),
       col("domain_hotel_id")
     )
-//////
-//    mapping_domain_hotel.createCassandraTable("testkeyspace2","mapping_domain_hotel")
-//    mapping_domain_hotel
-//      .write
-//      .format("org.apache.spark.sql.cassandra")
-//      .mode("Append")
-//      .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
-//      .save()
+////
+    mapping_domain_hotel.createCassandraTable("testkeyspace2","mapping_domain_hotel")
+    mapping_domain_hotel
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "mapping_domain_hotel", "keyspace" -> "testkeyspace2"))
+      .save()
 
     // Mapping_service
     val mapping_root_service = mapping_domain_hotel
@@ -195,14 +195,14 @@ class DataProcessingNew {
       max(col("laundry_service")).as("laundry_service"),
       max(col("shuttle_room")).as("shuttle_room")
     )
-///////
-//    mapping_service.createCassandraTable("testkeyspace2","mapping_service")
-//    mapping_service
-//      .write
-//      .format("org.apache.spark.sql.cassandra")
-//      .mode("Append")
-//      .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace2"))
-//      .save()
+/////
+    mapping_service.createCassandraTable("testkeyspace2","mapping_service")
+    mapping_service
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "mapping_service", "keyspace" -> "testkeyspace2"))
+      .save()
 
     // Mapping_location
     // val mapping_root_location = mapping_domain_hotel
@@ -223,14 +223,14 @@ class DataProcessingNew {
       col("review_datetime"),
       col("score")
     )
-///////
-//    mapping_hotel_review_clean.createCassandraTable("testkeyspace2","mapping_review")
-//    mapping_hotel_review_clean
-//      .write
-//      .format("org.apache.spark.sql.cassandra")
-//      .mode("Append")
-//      .options(Map("table" -> "mapping_review", "keyspace" -> "testkeyspace2"))
-//      .save()
+/////
+    mapping_hotel_review_clean.createCassandraTable("testkeyspace2","mapping_review")
+    mapping_hotel_review_clean
+      .write
+      .format("org.apache.spark.sql.cassandra")
+      .mode("Append")
+      .options(Map("table" -> "mapping_review", "keyspace" -> "testkeyspace2"))
+      .save()
 
     // Review count and review list
 //

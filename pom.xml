@@ -120,14 +120,11 @@
             <version>0.2.4</version>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/junit/junit -->
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>4.12</version>
-            <scope>test</scope>
+            <groupId>ml.dmlc</groupId>
+            <artifactId>xgboost4j-spark</artifactId>
+            <version>0.90</version>
         </dependency>
-
     </dependencies>
 
 

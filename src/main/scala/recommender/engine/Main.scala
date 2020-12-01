@@ -17,15 +17,15 @@ object Main {
 //    data.dataClustering()
 //    data.dataRankScore()
 
-//    val data = new DataPreprocessingNew
-//
-//    data.dataToCassandra()
+    val data = new DataPreprocessingNew
+
+    data.dataToCassandra()
 
 //    val data = new DataPreprocessing
 //    data.dataFiltering()
 //
-    val server = new AkkaServer
-    server.start()
+//    val server = new AkkaServer
+//    server.start()
 
   }
 }
