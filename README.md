@@ -1,5 +1,6 @@
 # HOTEL METASEARCH
 This is backend of a booking app like Trivago...
+
 It contains:
 - Ranking model
 - Backend API
